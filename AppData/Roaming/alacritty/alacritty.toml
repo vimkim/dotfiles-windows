@@ -1,0 +1,68 @@
+# Configuration for Alacritty, the GPU enhanced terminal emulator
+
+[window]
+# Window settings
+padding = { x = 10, y = 10 }
+dynamic_title = true
+startup_mode = "Maximized"
+blur = true
+
+[font]
+# Font configuration
+normal = { family = "JetBrainsMono Nerd Font Mono", style = "Regular" }
+bold = { family = "JetBrainsMono Nerd Font Mono", style = "Bold" }
+italic = { family = "JetBrainsMono Nerd Font Mono", style = "Italic" }
+size = 15
+
+
+[colors.cursor]
+text = '0x1E1E1E'
+cursor = '0x528BFF'
+
+[colors.selection]
+text = '0xFFFFFF'
+background = '0x264F78'
+
+[scrolling]
+history = 10000
+multiplier = 3
+
+[cursor]
+style = "Block"
+blink_interval = 500
+
+[shell]
+program = "wsl ~"
+
+[colors]
+# Colors
+
+# foreground = '0xD4D4D4'
+# Default colors
+[colors.primary]
+background = '#282c34'
+foreground = '#abb2bf'
+
+# Normal colors
+
+[colors.normal]
+black   = '#1e2127'
+red     = '#e06c75'
+green   = '#98c379'
+yellow  = '#d19a66'
+blue    = '#61afef'
+magenta = '#c678dd'
+cyan    = '#56b6c2'
+white   = '#abb2bf'
+
+
+# Bright colors
+[colors.bright]
+black   = '#5c6370'
+red     = '#e06c75'
+green   = '#98c379'
+yellow  = '#d19a66'
+blue    = '#61afef'
+magenta = '#c678dd'
+cyan    = '#56b6c2'
+white   = '#ffffff'
