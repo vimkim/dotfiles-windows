@@ -31,8 +31,19 @@ config.font_size = 12.0
 
 config.enable_tab_bar = false
 
-config.window_background_opacity = 0.90
 config.default_prog = { "wsl.exe", "--cd", "~" }
+
+config.background = {
+    {
+      source = {
+        File = wezterm.config_dir .. '/rainbow.jpg'
+      },
+      -- Adjust brightness (lower value makes it dimmer)
+      hsb = {
+        brightness = 0.1, -- Adjust this value to make the background dim
+      },
+    },
+}
 
 -- and finally, return the configuration to wezterm
 return config
