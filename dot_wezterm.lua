@@ -26,8 +26,8 @@ config.wsl_domains = {
 	},
 }
 
-config.font = wezterm.font("JetBrainsMono Nerd Font Mono")
-config.font_size = 12.0
+config.font = wezterm.font("JetBrainsMono Nerd Font Propo", {weight = "Bold"})
+config.font_size = 15.0
 
 config.enable_tab_bar = false
 
@@ -36,11 +36,11 @@ config.default_prog = { "wsl.exe", "--cd", "~" }
 config.background = {
     {
       source = {
-        File = wezterm.config_dir .. '/rainbow.jpg'
+        File = wezterm.config_dir .. '/yosemite.jpg'
       },
       -- Adjust brightness (lower value makes it dimmer)
       hsb = {
-        brightness = 0.1, -- Adjust this value to make the background dim
+        brightness = 0.03, -- Adjust this value to make the background dim
       },
     },
 }
