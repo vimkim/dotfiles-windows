@@ -33,14 +33,34 @@ config.enable_tab_bar = false
 
 config.default_prog = { "wsl.exe", "--cd", "~" }
 
+
+-- randomly select background images
+
+-- Function to get a random file from the list
+local function get_random_file(files)
+  if #files == 0 then
+    return nil
+
+  end
+  local index = math.random(1, #files)
+  return files[index]
+end
+
+-- Get the list of files and select one randomly
+
+-- C:\Users\dhkim\AppData\Local\Packages\Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy\LocalState\Assets
+local bg_images_dir_path = wezterm.config_dir ..'/AppData/Local/Packages/Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy/LocalState/Assets'
+local files = wezterm.read_dir(bg_images_dir_path)
+local random_file = get_random_file(files)
+
 config.background = {
     {
       source = {
-        File = wezterm.config_dir .. '/yosemite.jpg'
+        File = random_file
       },
       -- Adjust brightness (lower value makes it dimmer)
       hsb = {
-        brightness = 0.03, -- Adjust this value to make the background dim
+        brightness = 0.1, -- Adjust this value to make the background dim
       },
     },
 }
