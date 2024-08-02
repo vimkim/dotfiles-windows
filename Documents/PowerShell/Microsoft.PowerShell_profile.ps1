@@ -13,6 +13,9 @@ set-alias co code
 
 set-alias lz lazygit
 
+set-alias chez chezmoi
+set-alias chz chezmoi
+
 function chezd() {
     cd "$home/.local/share/chezmoi/"
 }
@@ -356,13 +359,6 @@ function compete($dir) {
 
 ### baekjoon end ###
 
-. ~/documents/github/dotfiles/pwsh/alias.ps1
-function source-ali {
-    . ~/documents/github/dotfiles/pwsh/alias.ps1
-}
-
-Set-Alias lvim C:\Users\kimdh\.local\bin\lvim.ps1
-
 function whichf() {
     # get-command @args | select *
     get-command @args | select -ExpandProperty Definition
@@ -414,6 +410,5 @@ Invoke-Expression (& {
     })
 
 Import-Module PSReadLine
-Import-Module posh-git
 
 fastfetch
