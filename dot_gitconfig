@@ -1,0 +1,7 @@
+[user]
+	email = kimdhyungg@gmail.com
+	name = Daehyun Kim
+[core]
+	autocrlf = input
+[credential "https://github.com"]
+	username = vimkim
