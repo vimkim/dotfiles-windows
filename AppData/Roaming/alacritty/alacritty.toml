@@ -9,9 +9,9 @@ blur = true
 
 [font]
 # Font configuration
-normal = { family = "JetBrainsMono Nerd Font Mono", style = "Regular" }
-bold = { family = "JetBrainsMono Nerd Font Mono", style = "Bold" }
-italic = { family = "JetBrainsMono Nerd Font Mono", style = "Italic" }
+normal = { family = "NotoSansM Nerd Font Propo", style = "Regular" }
+bold = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
+italic = { family = "NotoSansM Nerd Font Propo", style = "Italic" }
 size = 15
 
 
@@ -33,6 +33,9 @@ blink_interval = 500
 
 [shell]
 program = "wsl ~"
+
+[env]
+ALACRITTY_ENV = "true"
 
 [colors]
 # Colors
