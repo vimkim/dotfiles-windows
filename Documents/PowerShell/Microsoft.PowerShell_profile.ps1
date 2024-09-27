@@ -5,6 +5,8 @@
 #     & "$home/downloads/neovide-windows/neovide.exe" --maximized @args
 # }
 
+$env:EDITOR = "nvim"
+
 # set-alias neovide gnvim
 # set-alias gnv gnvim
 set-alias v nvim
