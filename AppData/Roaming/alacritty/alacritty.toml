@@ -9,7 +9,7 @@ blur = true
 
 [font]
 # Font configuration
-normal = { family = "NotoSansM Nerd Font Propo", style = "Regular" }
+normal = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
 bold = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
 italic = { family = "NotoSansM Nerd Font Propo", style = "Italic" }
 size = 15
