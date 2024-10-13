@@ -18,6 +18,20 @@ set-alias lz lazygit
 set-alias chez chezmoi
 set-alias chz chezmoi
 
+set alias vv='vc'
+function vc() {
+    # List all files in the current directory
+    $files = Get-ChildItem -File | ForEach-Object { $_.FullName }
+
+    # Use fzf to select a file
+    $selectedFile = $files | fzf --height 40% --reverse
+
+    # If a file was selected, open it with nvim
+    if ($selectedFile) {
+        nvim $selectedFile
+    }
+}
+
 function chezd() {
     cd "$home/.local/share/chezmoi/"
 }
@@ -89,6 +103,7 @@ set-psfzfoption -PSReadlineChordProvider 'ctrl+t' -PSReadlineChordReverseHistory
 function nvprofile() {
     code $home/AppData/Local/nvim/init.vim
 }
+
 
 function nvconfig() {
     Set-Location $env:LOCALAPPDATA/nvim/
