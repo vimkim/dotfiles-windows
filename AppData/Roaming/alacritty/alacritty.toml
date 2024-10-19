@@ -15,6 +15,9 @@ bold = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
 italic = { family = "NotoSansM Nerd Font Propo", style = "Italic" }
 size = 15
 
+[keyboard]
+bindings = [{ key = "Space", mods = "Control", chars = "\u0000" }]
+
 
 [colors.cursor]
 text = '0x1E1E1E'
