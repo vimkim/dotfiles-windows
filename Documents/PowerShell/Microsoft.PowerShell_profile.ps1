@@ -427,5 +427,15 @@ Invoke-Expression (& {
     })
 
 Import-Module PSReadLine
+Invoke-Expression "$(vfox activate pwsh)"
+
+function H() {
+    cd ..
+}
+
+$shimPath = "$env:USERPROFILE\AppData\Local\mise\shims"
+$currentPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+$newPath = $currentPath + ";" + $shimPath
+[Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
 
 fastfetch
