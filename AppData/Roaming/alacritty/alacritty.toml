@@ -1,5 +1,3 @@
-# Configuration for Alacritty, the GPU enhanced terminal emulator
-import = ["~/.config/alacritty/catppuccin-mocha.toml"]
 
 [window]
 # Window settings
@@ -35,9 +33,15 @@ multiplier = 3
 style = "Block"
 blink_interval = 500
 
-[shell]
+[terminal.shell]
 program = "wsl ~"
 
 [env]
 ALACRITTY_ENV = "true"
 WSLENV = "ALACRITTY_ENV/u"
+
+[general]
+# Configuration for Alacritty, the GPU enhanced terminal emulator
+import = ["~/.config/alacritty/catppuccin-mocha.toml"]
+
+[terminal]
