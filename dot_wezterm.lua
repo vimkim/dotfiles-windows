@@ -53,20 +53,21 @@ local bg_images_dir_path = wezterm.config_dir
 local files = wezterm.read_dir(bg_images_dir_path)
 local random_file = get_random_file(files)
 
-config.background = {
-	{
-		source = {
-			File = random_file,
-		},
-		-- Adjust brightness (lower value makes it dimmer)
-		hsb = {
-			brightness = 0.015, -- Adjust this value to make the background dim
-		},
-		-- width = "100%",
-		height = "100%",
-	},
-}
-
+-- config.background = {
+-- 	{
+-- 		source = {
+-- 			-- File = random_file,
+-- 		},
+-- 		-- Adjust brightness (lower value makes it dimmer)
+-- 		hsb = {
+-- 			-- brightness = 0.015, -- Adjust this value to make the background dim
+-- 			brightness = 0.0, -- Adjust this value to make the background dim
+-- 		},
+-- 		-- width = "100%",
+-- 		height = "100%",
+-- 	},
+-- }
+--
 local launch_menu = {}
 
 table.insert(launch_menu, {
