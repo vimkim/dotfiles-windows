@@ -1,4 +1,8 @@
-# Get SSH hosts, pipe to fzf, and use the selection to launch VS Code
+param(
+    [Parameter(Mandatory=$false)]
+    [string]$Path
+)
+
 $selectedHost = (Get-Content "$env:USERPROFILE\.ssh\config" |
     Select-String -Pattern "^\s*Host\s+" |
     ForEach-Object { $_.Line.Trim() -replace "Host ", "" } |
@@ -13,6 +17,13 @@ $selectedHost = $selectedHost.Trim()
 # If a host was selected, launch VS Code
 if ($selectedHost) {
     Write-Host "Connecting to $selectedHost..."
+
     # Launch VS Code with remote SSH connection
-    code --remote ssh-remote+$selectedHost
+    if ($Path) {
+        # Append the path if provided
+        code --remote ssh-remote+$selectedHost $Path
+    } else {
+        # No path provided, just connect to the host
+        code --remote ssh-remote+$selectedHost
+    }
 }

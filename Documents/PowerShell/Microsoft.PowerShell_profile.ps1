@@ -433,6 +433,17 @@ function H() {
     cd ..
 }
 
+function ppath () {
+    $env:PATH -split ";"
+}
+
+function cr () {
+    code-remote.ps1
+}
+
+
+$env:Path += ";$HOME\.local\bin"
+
 $shimPath = "$env:USERPROFILE\AppData\Local\mise\shims"
 $currentPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $newPath = $currentPath + ";" + $shimPath
