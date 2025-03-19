@@ -4,6 +4,14 @@
     "actions": 
     [
         {
+            "command": "unbound",
+            "keys": "ctrl+v"
+        },
+        {
+            "command": "unbound",
+            "keys": "win+sc(41)"
+        },
+        {
             "command": 
             {
                 "action": "copy",
@@ -13,15 +21,8 @@
             "keys": "ctrl+c"
         },
         {
-            "command": "unbound",
-            "keys": "ctrl+v"
-        },
-        {
-            "command": "unbound",
-            "keys": "win+sc(41)"
-        },
-        {
-            "command": "paste"
+            "command": "paste",
+            "id": "User.paste"
         },
         {
             "command": "find",
@@ -56,7 +57,7 @@
         "defaults": 
         {
             "backgroundImage": "desktopWallpaper",
-            "backgroundImageOpacity": 0.1,
+            "backgroundImageOpacity": 0.2,
             "colorScheme": "Catppuccin Frappe",
             "font": 
             {
@@ -65,6 +66,7 @@
                 "size": 16,
                 "weight": "bold"
             },
+            "intenseTextStyle": "none",
             "padding": "4"
         },
         "list": 
@@ -116,6 +118,12 @@
                 "hidden": false,
                 "name": "Ubuntu 24.04 LTS",
                 "source": "CanonicalGroupLimited.Ubuntu24.04LTS_79rhkp1fndgsc"
+            },
+            {
+                "guid": "{0b3a4754-f28c-5ac6-87a5-3e5b509a5004}",
+                "hidden": false,
+                "name": "Developer Command Prompt for VS 2017",
+                "source": "Windows.Terminal.VisualStudio"
             }
         ]
     },
