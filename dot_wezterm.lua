@@ -67,7 +67,30 @@ local random_file = get_random_file(files)
 -- 		height = "100%",
 -- 	},
 -- }
---
+
+config.background = {
+	-- first layer
+	{
+		-- Use an image as the background
+		source = {
+			-- File = xdg_config_home .. "/Pictures/arch-catppuccin-blurred.png", -- Provide the path to the image file
+			File = random_file,
+		},
+
+		repeat_x = "NoRepeat",
+		horizontal_align = "Center",
+	},
+	-- second layer
+	{
+		source = {
+			Color = "rgba(48, 52, 70, 0.95)",
+		},
+		opacity = 0.85,
+		height = "100%",
+		width = "100%",
+	},
+}
+
 local launch_menu = {}
 
 table.insert(launch_menu, {
