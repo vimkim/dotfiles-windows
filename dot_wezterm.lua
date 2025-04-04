@@ -79,13 +79,14 @@ config.background = {
 
 		repeat_x = "NoRepeat",
 		horizontal_align = "Center",
+		opacity = 1,
 	},
 	-- second layer
 	{
 		source = {
 			Color = "rgba(48, 52, 70, 0.95)",
 		},
-		opacity = 0.85,
+		opacity = 0.95,
 		height = "100%",
 		width = "100%",
 	},
