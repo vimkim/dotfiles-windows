@@ -15,6 +15,9 @@ wezterm.on("gui-startup", function()
 	local tab, pane, window = mux.spawn_window(cmd or {})
 	window:gui_window():maximize()
 end)
+config.window_decorations = "RESIZE"
+config.enable_tab_bar = true
+config.hide_tab_bar_if_only_one_tab = true
 
 config.wsl_domains = {
 	{
@@ -27,10 +30,12 @@ config.wsl_domains = {
 }
 
 -- config.font = wezterm.font("JetBrainsMonoNL Nerd Font Propo", { weight = "Bold" })
-config.font = wezterm.font("NotoSansM Nerd Font Propo", { weight = "Bold" })
+-- config.font = wezterm.font("NotoSansM Nerd Font Propo", { weight = "Bold" })
+config.font = wezterm.font_with_fallback({
+	{ family = "NotoSansM Nerd Font Propo", weight = "Bold" },
+	{ family = "D2CodingLigature Nerd Font Propo", weight = "Bold" },
+})
 config.font_size = 15.0
-
-config.enable_tab_bar = false
 
 config.default_prog = { "wsl.exe", "--cd", "~" }
 
@@ -48,10 +53,10 @@ end
 -- Get the list of files and select one randomly
 
 -- C:\Users\dhkim\AppData\Local\Packages\Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy\LocalState\Assets
-local bg_images_dir_path = wezterm.config_dir
-	.. "/AppData/Local/Packages/Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy/LocalState/Assets"
-local files = wezterm.read_dir(bg_images_dir_path)
-local random_file = get_random_file(files)
+-- local bg_images_dir_path = wezterm.config_dir
+-- .. "/AppData/Local/Packages/Microsoft.Windows.ContentDeliveryManager_cw5n1h2txyewy/LocalState/Assets"
+-- local files = wezterm.read_dir(bg_images_dir_path)
+-- local random_file = get_random_file(files)
 
 -- config.background = {
 -- 	{
@@ -68,29 +73,32 @@ local random_file = get_random_file(files)
 -- 	},
 -- }
 
-config.background = {
-	-- first layer
-	{
-		-- Use an image as the background
-		source = {
-			-- File = xdg_config_home .. "/Pictures/arch-catppuccin-blurred.png", -- Provide the path to the image file
-			File = random_file,
-		},
+-- config.background = {
+-- 	-- first layer
+-- 	{
+-- 		-- Use an image as the background
+-- 		-- source = {
+-- 		-- File = xdg_config_home .. "/Pictures/arch-catppuccin-blurred.png", -- Provide the path to the image file
+-- 		-- File = random_file,
+-- 		-- },
+--
+-- 		repeat_x = "NoRepeat",
+-- 		horizontal_align = "Center",
+-- 		opacity = 1,
+-- 	},
+-- 	-- second layer
+-- 	{
+-- 		source = {
+-- 			Color = "rgba(48, 52, 70, 0.95)",
+-- 		},
+-- 		opacity = 0.95,
+-- 		height = "100%",
+-- 		width = "100%",
+-- 	},
+-- }
 
-		repeat_x = "NoRepeat",
-		horizontal_align = "Center",
-		opacity = 1,
-	},
-	-- second layer
-	{
-		source = {
-			Color = "rgba(48, 52, 70, 0.95)",
-		},
-		opacity = 0.95,
-		height = "100%",
-		width = "100%",
-	},
-}
+config.window_background_opacity = 0.5
+config.win32_system_backdrop = "Acrylic"
 
 local launch_menu = {}
 
@@ -106,7 +114,7 @@ table.insert(launch_menu, {
 config.launch_menu = launch_menu
 
 config.window_padding = {
-	left = 0,
+	left = 10,
 	right = 0,
 	top = 0,
 	bottom = 0,
