@@ -427,7 +427,6 @@ Invoke-Expression (& {
     })
 
 Import-Module PSReadLine
-Invoke-Expression "$(vfox activate pwsh)"
 
 function H() {
     cd ..
@@ -440,6 +439,27 @@ function ppath () {
 function cr () {
     code-remote.ps1
 }
+
+function cv {
+    param(
+        [string]$target
+    )
+
+    if ($target) {
+        cl $target
+        return
+    }
+
+    $dirs = @("..") + (fd --max-depth 1 -H -I --type d --type l -L --strip-cwd-prefix)
+    $dir = $dirs | fzf --height 80% --reverse
+
+    if ($dir) {
+        cd_ $dir
+    }
+}
+
+set-alias c cv
+
 
 
 $env:Path += ";$HOME\.local\bin"
