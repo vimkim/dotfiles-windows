@@ -42,6 +42,6 @@ WSLENV = "ALACRITTY_ENV/u"
 
 [general]
 # Configuration for Alacritty, the GPU enhanced terminal emulator
-import = ["~/.config/alacritty/catppuccin-mocha.toml"]
+import = ["~/.config/alacritty/catppuccin-frappe.toml"]
 
 [terminal]
