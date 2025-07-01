@@ -23,7 +23,7 @@ config.wsl_domains = {
 	{
 		-- The name of this specific domain.  Must be unique amonst all types
 		-- of domain in the configuration file.
-		name = "WSL:Ubuntu-22.04",
+		name = "WSL:Ubuntu-24.04",
 
 		default_cwd = "~",
 	},
@@ -32,6 +32,7 @@ config.wsl_domains = {
 -- config.font = wezterm.font("JetBrainsMonoNL Nerd Font Propo", { weight = "Bold" })
 -- config.font = wezterm.font("NotoSansM Nerd Font Propo", { weight = "Bold" })
 config.font = wezterm.font_with_fallback({
+	{ family = "Maple Mono NF", weight = "Bold" },
 	{ family = "NotoSansM Nerd Font Propo", weight = "Bold" },
 	{ family = "D2CodingLigature Nerd Font Propo", weight = "Bold" },
 })
@@ -97,8 +98,8 @@ end
 -- 	},
 -- }
 
-config.window_background_opacity = 0.5
-config.win32_system_backdrop = "Acrylic"
+-- config.window_background_opacity = 0.5
+-- config.win32_system_backdrop = "Acrylic"
 
 local launch_menu = {}
 
