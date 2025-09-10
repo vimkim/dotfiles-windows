@@ -4,21 +4,12 @@
     "actions": 
     [
         {
-            "command": "unbound",
-            "keys": "ctrl+v"
-        },
-        {
-            "command": "unbound",
-            "keys": "win+sc(41)"
-        },
-        {
             "command": 
             {
                 "action": "copy",
                 "singleLine": false
             },
-            "id": "User.copy.644BA8F2",
-            "keys": "ctrl+c"
+            "id": "User.copy.644BA8F2"
         },
         {
             "command": "paste",
@@ -26,8 +17,7 @@
         },
         {
             "command": "find",
-            "id": "User.find",
-            "keys": "ctrl+shift+f"
+            "id": "User.find"
         },
         {
             "command": 
@@ -36,8 +26,7 @@
                 "split": "auto",
                 "splitMode": "duplicate"
             },
-            "id": "User.splitPane.A6751878",
-            "keys": "alt+shift+d"
+            "id": "User.splitPane.A6751878"
         }
     ],
     "alwaysShowTabs": false,
@@ -45,6 +34,29 @@
     "copyFormatting": "none",
     "copyOnSelect": false,
     "defaultProfile": "{51855cb2-8cce-5362-8f54-464b92b32386}",
+    "keybindings": 
+    [
+        {
+            "id": null,
+            "keys": "ctrl+v"
+        },
+        {
+            "id": "User.find",
+            "keys": "ctrl+shift+f"
+        },
+        {
+            "id": null,
+            "keys": "win+sc(41)"
+        },
+        {
+            "id": "User.copy.644BA8F2",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "User.splitPane.A6751878",
+            "keys": "alt+shift+d"
+        }
+    ],
     "launchMode": "maximized",
     "newTabMenu": 
     [
@@ -56,13 +68,13 @@
     {
         "defaults": 
         {
-            "backgroundImage": "desktopWallpaper",
-            "backgroundImageOpacity": 0.2,
+            "backgroundImage": "C:\\Users\\dhkim\\OneDrive\\Pictures\\nix-black-4k.png",
+            "backgroundImageOpacity": 0.1,
             "colorScheme": "Catppuccin Frappe",
             "font": 
             {
                 "cellHeight": "1.2",
-                "face": "NotoSansM Nerd Font Propo",
+                "face": "Maple Mono NF, D2CodingLigature Nerd Font Propo",
                 "size": 16,
                 "weight": "bold"
             },
@@ -124,6 +136,12 @@
                 "hidden": false,
                 "name": "Developer Command Prompt for VS 2017",
                 "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{47302f9c-1ac4-566c-aa3e-8cf29889d6ab}",
+                "hidden": false,
+                "name": "Nushell",
+                "source": "nu"
             }
         ]
     },
