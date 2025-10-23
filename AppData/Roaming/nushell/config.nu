@@ -25,12 +25,13 @@ starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.n
 
 alias fzfm = fzf --height 60% --reverse
 
+source ($nu.default-config-dir | path join eza.nu)
+
 ###############################################################################
 # cd & ls
 ###############################################################################
 
-# alias l = ezam
-alias l = ls
+alias l = ezam
 def --env cl [
   dir?: string # Optional argument
 ] {
