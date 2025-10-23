@@ -31,6 +31,8 @@ source ($nu.default-config-dir | path join eza.nu)
 # cd & ls
 ###############################################################################
 
+alias ze = wsl -- SHELL=nu.exe /home/linuxbrew/.linuxbrew/bin/zellij
+
 alias l = ezam
 def --env cl [
   dir?: string # Optional argument
@@ -273,9 +275,9 @@ alias todo = nvim ~/.todo.md
 alias v = nvim
 alias w = which
 alias wa = which -a
-alias za = attach-or-new.sh
-alias ze = zellij
-alias zs = zellij -s
+# alias za = attach-or-new.sh
+# alias ze = zellij
+# alias zs = zellij -s
 alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
 
