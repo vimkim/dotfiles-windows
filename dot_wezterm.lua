@@ -112,7 +112,7 @@ table.insert(launch_menu, {
 	args = { "pwsh-preview.exe", "-NoLogo" },
 })
 table.insert(launch_menu, {
-	label = "Nushell",
+	label = "Windows Nushell",
 	args = { "nu.exe" },
 })
 
