@@ -223,7 +223,7 @@ alias cz = zi
 alias activate = overlay use .venv/bin/activate.nu
 alias dea = deactivate
 alias chez = chezmoi
-alias chezd = cl ~/.local/share/chezmoi/
+alias chezd = cl $"($env.HOME)/.local/share/chezmoi"
 alias caps = gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
 alias caps_reset = gsettings reset org.gnome.desktop.input-sources xkb-options
 alias conf = cl ~/.config/
@@ -266,7 +266,7 @@ alias perf-enable = sudo sysctl kernel.perf_event_paranoid=-1
 alias pf = ~/.config/my-scripts/bin/ps-fuzzy.sh
 alias ports = somo
 alias ports-tcp = somo -t
-alias prof = nvim ~/.local/share/chezmoi/private_dot_config/nushell/config.nu
+alias prof = nvim $"($env.HOME)/.local/share/chezmoi/AppData/Roaming/nushell/config.nu"
 alias t = tspin
 alias todo = nvim ~/.todo.md
 alias v = nvim
@@ -278,5 +278,5 @@ alias zs = zellij -s
 alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
 
-use ($nu.default-config-dir | path join mise.nu)
+# use ($nu.default-config-dir | path join mise.nu)
 

@@ -111,6 +111,10 @@ table.insert(launch_menu, {
 	label = "Pwsh",
 	args = { "pwsh-preview.exe", "-NoLogo" },
 })
+table.insert(launch_menu, {
+	label = "Nushell",
+	args = { "nu.exe" },
+})
 
 config.launch_menu = launch_menu
 
