@@ -18,6 +18,7 @@
 # them for future reference.
 
 $env.HOME = $env.USERPROFILE
+$env.EDITOR = 'nvim'
 
 mkdir ($nu.data-dir | path join "vendor/autoload")
 starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
