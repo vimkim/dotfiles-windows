@@ -73,7 +73,7 @@
             "colorScheme": "Catppuccin Frappe",
             "font": 
             {
-                "cellHeight": "1.2",
+                "cellHeight": "1.5",
                 "face": "Maple Mono NF, D2CodingLigature Nerd Font Propo",
                 "size": 16,
                 "weight": "bold"
@@ -83,6 +83,12 @@
         },
         "list": 
         [
+            {
+                "guid": "{47302f9c-1ac4-566c-aa3e-8cf29889d6ab}",
+                "hidden": false,
+                "name": "Nushell",
+                "source": "nu"
+            },
             {
                 "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
                 "hidden": false,
@@ -136,12 +142,6 @@
                 "hidden": false,
                 "name": "Developer Command Prompt for VS 2017",
                 "source": "Windows.Terminal.VisualStudio"
-            },
-            {
-                "guid": "{47302f9c-1ac4-566c-aa3e-8cf29889d6ab}",
-                "hidden": false,
-                "name": "Nushell",
-                "source": "nu"
             }
         ]
     },
