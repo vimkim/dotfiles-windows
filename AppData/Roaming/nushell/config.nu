@@ -279,3 +279,4 @@ alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
 
 use ($nu.default-config-dir | path join mise.nu)
+
