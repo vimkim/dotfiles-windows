@@ -8,9 +8,12 @@ blur = true
 
 [font]
 # Font configuration
-normal = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
-bold = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
-italic = { family = "NotoSansM Nerd Font Propo", style = "Italic" }
+# normal = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
+# bold = { family = "NotoSansM Nerd Font Propo", style = "Bold" }
+# italic = { family = "NotoSansM Nerd Font Propo", style = "Italic" }
+normal = { family = "Maple Mono NF", style = "Bold" }
+bold = { family = "Maple Mono NF", style = "Bold" }
+italic = { family = "Maple Mono NF", style = "Italic" }
 size = 15
 
 [keyboard]
