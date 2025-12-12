@@ -36,7 +36,9 @@ config.font = wezterm.font_with_fallback({
 	{ family = "NotoSansM Nerd Font Propo", weight = "Bold" },
 	{ family = "D2CodingLigature Nerd Font Propo", weight = "Bold" },
 })
-config.font_size = 15.0
+config.font_size = 12.0
+config.line_height = 0.9
+
 
 config.default_prog = { "wsl.exe", "--cd", "~" }
 
