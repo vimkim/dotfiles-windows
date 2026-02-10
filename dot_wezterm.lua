@@ -100,8 +100,10 @@ end
 -- 	},
 -- }
 
--- config.window_background_opacity = 0.5
--- config.win32_system_backdrop = "Acrylic"
+config.window_background_opacity = 0.5
+-- config.win32_system_backdrop = "Tabbed"
+-- config.win32_system_backdrop = "Mica"
+config.win32_system_backdrop = "Acrylic"
 
 local launch_menu = {}
 
