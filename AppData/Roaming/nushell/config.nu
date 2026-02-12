@@ -17,6 +17,9 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
+# required for 'path add .../bin'
+use std/util "path add"
+
 $env.HOME = $env.USERPROFILE
 $env.EDITOR = 'nvim'
 
@@ -295,5 +298,8 @@ alias wa = which -a
 alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
 
-# use ($nu.default-config-dir | path join mise.nu)
+use ($nu.default-config-dir | path join mise.nu)
+
+# c compiler error for nvim-treesitter
+path add 'C:\msys64\mingw64\bin'
 
