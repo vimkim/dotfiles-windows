@@ -1,0 +1,407 @@
+// Place your settings in this file to overwrite the default settings
+{
+    "window.commandCenter": true,
+    "remote.SSH.remotePlatform": {
+        "dev2-server": "linux"
+    },
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
+    /*
+
+  editor related
+  */
+    "editor.wordWrap": "on",
+    "editor.renderWhitespace": "all",
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "editor.stickyScroll.enabled": true,
+    "editor.lineNumbers": "on",
+    "editor.CursorSurroundingLines": 10,
+    // "editor.cursorSmoothCaretAnimation": "on",
+    // "editor.cursorBlinking": "phase",
+    "editor.bracketPairColorization.enabled": true,
+    "editor.multiCursorModifier": "ctrlCmd",
+    "editor.acceptSuggestionOnCommitCharacter": false, // annoying if true.
+    "editor.acceptSuggestionOnEnter": "smart", // don't know what it does.
+    //"editor.parameterHints.enabled": true,
+    /*
+
+  editor completion settings
+  */
+    "editor.tabCompletion": "off",
+    "editor.snippetSuggestions": "top", // important, otherwise strange things come first.
+    /*
+
+  debug
+  */
+    "debug.inlineValues": "on",
+    /*
+
+  terminal
+  */
+    "terminal.integrated.smoothScrolling": true,
+    "terminal.integrated.gpuAcceleration": "off",
+    // This hides PIC on startup. Saves life.
+    "powershell.integratedConsole.showOnStartup": false,
+    /*
+
+  font related
+  */
+    // ctrl-click allows multiCursor
+    "editor.fontFamily": "'Maple Mono NF', 'Maple Mono', 'NotoSansM Nerd Font Propo', 'JetBrainsMono Nerd Font Mono', 'disable Monaspace Radon Var', 'disable Monaspace Krypton Medium', 'disable_RandyGG', 'disable ComicShannsMono Nerd Font Mono', 'CaskaydiaCove Nerd Font code', 'Fira Code Retina', 'Cascadia Code', 'Consolas', 'Lucida Console', 'NanumSquare', '맑은 고딕'",
+    "editor.fontLigatures": false,
+    "editor.fontSize": 17,
+    "editor.fontWeight": "bold",
+    // "editor.lineHeight": 22, // best when font size * 1.5
+    "terminal.integrated.fontFamily": "'Maple Mono', 'NotoSansM Nerd Font Propo', 'JetBrainsMono Nerd Font Mono', 'NoD2Coding', 'CaskaydiaCove Nerd Font Mono','Fira Code Retina', 'Cascadia Code', 'Consolas', 'Lucida Console'",
+    "terminal.integrated.fontSize": 14,
+    /*
+
+  git
+  */
+    "git.autofetch": true,
+    /*
+
+  window & workbench
+  */
+    "workbench.iconTheme": "catppuccin-mocha",
+    "workbench.startupEditor": "newUntitledFile",
+    "window.newWindowDimensions": "maximized",
+    "window.restoreWindows": "none",
+    "files.hotExit": "off", // goes together with window.restoreWindows
+    "files.eol": "\n",
+    "files.associations": {
+        "CMakeLists.txt": "cmake",
+        "*.cmake": "cmake",
+        ".env*": "properties",
+        "toc": "plaintext"
+    },
+    // "workbench.editor.enablePreview": true // does not work due to Tab Cycle
+    /*
+
+  vim settings
+  */
+    // "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?_", // for vim
+    "vim.easymotion": true, // <leader><leader>s<char>
+    ////// "vim.debug.loggingLevelForConsole":"debug",
+    ////// "vim.debug.loggingLevelForAlert": "debug",
+    ////// //"vim.vimrc.enable": true,
+    ////// //"vim.vimrc.path": "~/dkenv/runtime_config/code/.vimrc",
+    "vim.showcmd": true,
+    "vim.incsearch": true,
+    "vim.useSystemClipboard": true,
+    "vim.useCtrlKeys": true,
+    "vim.hlsearch": true,
+    // LEADER MAPPING
+    "vim.leader": ",",
+    "vim.handleKeys": {
+        "<C-d>": true,
+        "<C-k>": false,
+        "<C-f>": false,
+        "<C-p>": false
+    },
+    /*
+
+  vim mapping
+  */
+    "vim.insertModeKeyBindings": [
+        {
+            "before": [
+                "<leader>",
+                "s"
+            ],
+            "after": [
+                "<esc>"
+            ],
+            "commands": [
+                // {
+                //   "command": "",
+                //   // "command": "workbench.action.files.save",
+                //   "args": []
+                // }
+            ]
+        }
+    ],
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": [
+                "<leader>",
+                "q"
+            ],
+            "after": [],
+            "commands": [
+                {
+                    "command": "workbench.action.closeActiveEditor",
+                    "args": []
+                }
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "s"
+            ],
+            "after": [
+                "<esc>"
+            ],
+            "commands": [
+                {
+                    "command": "workbench.action.files.save",
+                    "args": []
+                }
+            ]
+        }
+    ],
+    /*
+
+  vim status bar colors
+  */
+    // "vim.statusBarColorControl": true,
+    // "vim.statusBarColors.normal": [
+    //     "#8FBCBB",
+    //     "#434C5E"
+    // ],
+    // "vim.statusBarColors.insert": "#BF616A",
+    // "vim.statusBarColors.visual": "#B48EAD",
+    // "vim.statusBarColors.visualline": "#B48EAD",
+    // "vim.statusBarColors.visualblock": "#A3BE8C",
+    // "vim.statusBarColors.replace": "#D08770",
+    // "vim.statusBarColors.commandlineinprogress": "#007ACC",
+    // "vim.statusBarColors.searchinprogressmode": "#007ACC",
+    // "vim.statusBarColors.easymotionmode": "#007ACC",
+    // "vim.statusBarColors.easymotioninputmode": "#007ACC",
+    // "vim.statusBarColors.surroundinputmode": "#007ACC",
+    // // status bar changes by vim mode. Does this work?
+    // "workbench.colorCustomizations": {
+    //     "statusBar.background": "#BF616A",
+    //     "statusBar.noFolderBackground": "#BF616A",
+    //     "statusBar.debuggingBackground": "#BF616A",
+    //     "statusBar.foreground": "#434C5E",
+    //     "statusBar.debuggingForeground": "#434C5E"
+    // },
+    /*
+
+  language specific
+  */
+    "[cpp]": {
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        },
+        "editor.tabSize": 8,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "jkillian.custom-local-formatters"
+    },
+    "[c]": {
+        "editor.quickSuggestions": {
+            "comments": "on",
+            "strings": "on",
+            "other": "on"
+        },
+        "editor.tabSize": 8,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "jkillian.custom-local-formatters"
+    },
+    "[markdown]": {
+        "editor.renderWhitespace": "all",
+        "editor.acceptSuggestionOnEnter": "off",
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    /*
+
+  This lets you use path autocomplete in markdown or simple text .
+  */
+    "path-autocomplete.triggerOutsideStrings": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+    /*
+
+  neovim
+  */
+    // "vscode-neovim.neovimExecutablePaths.win32": "nvim.exe",
+    /*
+
+  */
+    "editor.accessibilitySupport": "off",
+    /*
+
+  Project Manager
+  */
+    "projectManager.git.baseFolders": [
+        "c:\\Users\\kimdh\\Documents\\GitHub\\dotfiles"
+    ],
+    "gitlens.views.commitDetails.files.layout": "tree",
+    /*
+
+  eslint
+  */
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll.eslint": "explicit"
+    },
+    /*
+
+  prettier
+  */
+    // "prettier.arrowParens": "always",
+    // "prettier.semi": true,
+    // "prettier.singleQuote": true,
+    // "prettier.trailingComma": "all",
+    // "prettier.useTabs": false,
+    // "prettier.tabWidth": 2,
+    // "prettier.printWidth": 80,
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+        // "editor.tabSize": 2
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+        // "editor.tabSize": 2
+    },
+    "[typescriptreact]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        // "editor.tabSize": 2
+    },
+    "[html]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "vscode.html-language-features"
+    },
+    "editor.linkedEditing": true,
+    "[jsonc]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    /*
+
+  custom local formatters
+  // https://marketplace.visualstudio.com/items?itemName=jkillian.custom-local-formatters
+  */
+    "customLocalFormatters.formatters": [
+        {
+            "command": "cubrid-format-codestyle-stdin.sh ${file}",
+            "languages": [
+                "c",
+                "cpp"
+            ]
+        }
+    ],
+    /*
+
+  */
+    "files.autoSave": "onFocusChange",
+    "Lua.codeLens.enable": true,
+    "Lua.diagnostics.globals": [
+        "vim"
+    ],
+    "gitlens.defaultGravatarsStyle": "retro",
+    "remote.SSH.remotePlatform": {
+        "boostcamp-ncp": "linux",
+        "223.130.146.179": "linux",
+        "54.161.168.121": "linux",
+        "192.168.2.216": "linux",
+        "ssh216": "linux",
+        "ssh217": "linux",
+        "dev2-container-1": "linux",
+        "dev2-server": "linux"
+    },
+    "gitlens.graph.dimMergeCommits": true,
+    "gitlens.graph.layout": "editor",
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    /*
+
+  sql formatter
+  */
+    "SQL-Formatter-VSCode.dialect": "mysql",
+    "SQL-Formatter-VSCode.keywordCase": "upper",
+    "SQL-Formatter-VSCode.dataTypeCase": "upper",
+    "SQL-Formatter-VSCode.expressionWidth": 80,
+    "SQL-Formatter-VSCode.functionCase": "upper",
+    "SQL-Formatter-VSCode.newlineBeforeSemicolon": true,
+    "[sql]": {
+        "editor.defaultFormatter": "ReneSaarsoo.sql-formatter-vsc",
+        "editor.formatOnSave": true
+    },
+    "[scss]": {
+        "editor.defaultFormatter": "vscode.css-language-features",
+        "editor.formatOnSave": true
+    },
+    "remote.autoForwardPortsSource": "hybrid",
+    "[shellscript]": {
+        "files.eol": "\n",
+        "editor.defaultFormatter": "foxundermoon.shell-format",
+        "editor.formatOnSave": true
+    },
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    },
+    "remote.SSH.configFile": "~/.ssh/config",
+    "go.toolsManagement.autoUpdate": true,
+    "errorLens.messageEnabled": false,
+    "github.copilot.editor.enableAutoCompletions": true,
+    // "cmake.configureOnOpen": true,
+    "cmake.generator": "Ninja",
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
+    "cmake.useCMakePresets": "always",
+    "cmake.showOptionsMovedNotification": false,
+    "cmake.options.statusBarVisibility": "icon",
+    "cmake.allowCommentsInPresetsFile": true,
+    "errorLens.enabledDiagnosticLevels": [
+        "info",
+        "warning"
+    ],
+    "vim.sneak": true,
+    "vim.sneakReplacesF": true,
+    "vim.sneakUseIgnorecaseAndSmartcase": true,
+    "vim.overrideCopy": false,
+    "terminal.integrated.copyOnSelection": true,
+    "editor.detectIndentation": false,
+    /*
+
+    for vscode+gdb debugging, makes you skip typing -exec
+    */
+    "multiCommand.commands": [
+        {
+            "command": "multiCommand.enterExec",
+            "sequence": [
+                "repl.action.acceptInput",
+                {
+                    "command": "editor.action.insertSnippet",
+                    "args": {
+                        "snippet": "-exec "
+                    }
+                }
+            ]
+        }
+    ],
+    "glassit.alpha": 255,
+    "editor.minimap.renderCharacters": false,
+    "editor.minimap.enabled": false,
+    "workbench.sideBar.location": "right",
+    "makefile.configureOnOpen": true,
+    "debug.allowBreakpointsEverywhere": true,
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "workbench.colorTheme": "Catppuccin Mocha"
+    // "glassit.alpha": 220,
+    // "debug.allowBreakpointsEverywhere": true
+}

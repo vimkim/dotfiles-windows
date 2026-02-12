@@ -1,0 +1,149 @@
+// Place your key bindings in this file to override the defaults
+[
+    {
+        "key": "ctrl+i",
+        "command": "composerMode.agent"
+    }
+    // cycle tabs
+    // {
+    //   "key": "ctrl+shift+tab",
+    //   "command": "workbench.action.previousEditor"
+    // },
+    /*
+
+  */
+    // {
+    //   "key": "tab",
+    //   "command": "selectNextQuickFix",
+    //   "when": "editorFocus && quickFixWidgetVisible"
+    // },
+    // {
+    //   "key": "shift+tab",
+    //   "command": "selectPrevQuickFix",
+    //   "when": "editorFocus && quickFixWidgetVisible"
+    // },
+    // {
+    //   "key": "tab",
+    //   "command": "selectNextSuggestion",
+    //   "when": "editorTextFocus && suggestWidgetMultipleSuggestions && suggestWidgetVisible"
+    // },
+    // {
+    //   "key": "shift+tab",
+    //   "command": "selectPrevSuggestion",
+    //   "when": "editorTextFocus && suggestWidgetMultipleSuggestions && suggestWidgetVisible"
+    // },
+    /*
+
+  toggle sidebar
+  */
+    {
+        "key": "ctrl+shift+a",
+        "command": "workbench.action.toggleSidebarVisibility"
+    },
+    {
+        "key": "ctrl+b",
+        "command": "-workbench.action.toggleSidebarVisibility"
+    },
+    /*
+
+  terminal shortcut
+  */
+    {
+        "key": "ctrl+t",
+        "command": "workbench.action.terminal.toggleTerminal",
+        "when": "terminal.active"
+    },
+    {
+        "key": "alt+t",
+        "command": "workbench.action.terminal.toggleTerminal",
+        "when": "terminal.active"
+    },
+    {
+        "key": "ctrl+oem_3",
+        "command": "-workbench.action.terminal.toggleTerminal",
+        "when": "terminal.active"
+    },
+    /*
+
+  // command palette navigation shortcuts
+  microsoft/vscode/#7876 bpasero rocks. Navigate -> Select saved my life.
+  Navigate has bugs. When release, it autoselects which is annoying.
+  */
+    {
+        "key": "ctrl+n",
+        // "command": "workbench.action.quickOpenNavigateNext", // bad
+        "command": "workbench.action.quickOpenSelectNext", // good
+        "when": "inQuickOpen"
+    },
+    {
+        "key": "ctrl+p",
+        "command": "workbench.action.quickOpenSelectPrevious",
+        //"when": "inQuickOpen"
+        "when": "inQuickOpen"
+    },
+    /*
+  
+  code action shortcuts (ctrl + .)
+  */
+    {
+        "key": "ctrl+n",
+        "when": "codeActionMenuVisible",
+        "command": "selectNextCodeAction"
+    },
+    {
+        "key": "ctrl+p",
+        "when": "codeActionMenuVisible",
+        "command": "selectPrevCodeAction"
+    },
+    /*
+
+  problems tab (ctrl + m) navigation
+  */
+    {
+        "key": "ctrl+n",
+        "command": "list.focusDown",
+        "when": "listFocus && !inputFocus"
+    },
+    {
+        "key": "ctrl+p",
+        "command": "list.focusUp",
+        "when": "listFocus && !inputFocus"
+    },
+    /*
+
+  vscode-neovim related
+  */
+    {
+        "command": "vscode-neovim.compositeEscape1",
+        "key": ",",
+        "when": "neovim.mode == insert && editorTextFocus",
+        "args": ","
+    },
+    {
+        "command": "vscode-neovim.compositeEscape2",
+        "key": "s",
+        "when": "neovim.mode == insert && editorTextFocus",
+        "args": "s"
+    },
+    {
+        "key": "ctrl+a",
+        "command": "git.stageSelectedRanges",
+        "when": "isInDiffEditor && !operationInProgress"
+    },
+    /*
+
+  https://stackoverflow.com/questions/77097162/vscode-vim-plugin-ctrlp-no-longer-works
+  */
+    {
+        "key": "ctrl+p",
+        "command": "workbench.action.quickOpen"
+    },
+    {
+        "key": "enter",
+        "command": "extension.multiCommand.execute",
+        "args": {
+            "command": "multiCommand.enterExec"
+        },
+        "when": "inDebugRepl"
+    }
+]
