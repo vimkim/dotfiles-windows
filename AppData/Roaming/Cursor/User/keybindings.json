@@ -113,18 +113,19 @@
 
   vscode-neovim related
   */
-    {
-        "command": "vscode-neovim.compositeEscape1",
-        "key": ",",
-        "when": "neovim.mode == insert && editorTextFocus",
-        "args": ","
-    },
-    {
-        "command": "vscode-neovim.compositeEscape2",
-        "key": "s",
-        "when": "neovim.mode == insert && editorTextFocus",
-        "args": "s"
-    },
+    // {
+    // deprecated
+    //     "command": "vscode-neovim.compositeEscape1",
+    //     "key": ",",
+    //     "when": "neovim.mode == insert && editorTextFocus",
+    //     "args": ","
+    // },
+    // {
+    //     "command": "vscode-neovim.compositeEscape2",
+    //     "key": "s",
+    //     "when": "neovim.mode == insert && editorTextFocus",
+    //     "args": "s"
+    // },
     {
         "key": "ctrl+a",
         "command": "git.stageSelectedRanges",

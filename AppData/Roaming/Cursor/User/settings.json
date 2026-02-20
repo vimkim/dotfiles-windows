@@ -7,6 +7,11 @@
     "extensions.experimental.affinity": {
         "asvetliakov.vscode-neovim": 1
     },
+    "vscode-neovim.compositeKeys": {
+        ",s": {
+            "command": "vscode-neovim.escape"
+        },
+    },
     /*
 
   editor related
