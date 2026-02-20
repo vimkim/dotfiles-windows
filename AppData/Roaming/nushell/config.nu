@@ -297,9 +297,11 @@ alias wa = which -a
 # alias zs = zellij -s
 alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
+alias za = do { wsl -- SHELL=nu.exe /home/linuxbrew/.linuxbrew/bin/zellij }
 
 use ($nu.default-config-dir | path join mise.nu)
 
 # c compiler error for nvim-treesitter
 path add 'C:\msys64\mingw64\bin'
 
+source ~/.local/share/atuin/init.nu
