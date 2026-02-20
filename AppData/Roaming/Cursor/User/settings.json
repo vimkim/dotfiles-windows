@@ -56,7 +56,7 @@
     "editor.fontSize": 15,
     "editor.fontWeight": "bold",
     // "editor.lineHeight": 22, // best when font size * 1.5
-    "terminal.integrated.fontFamily": "'Maple Mono', 'NotoSansM Nerd Font Propo', 'JetBrainsMono Nerd Font Mono', 'NoD2Coding', 'CaskaydiaCove Nerd Font Mono','Fira Code Retina', 'Cascadia Code', 'Consolas', 'Lucida Console'",
+    "terminal.integrated.fontFamily": "'Maple Mono NF', 'Maple Mono', 'NotoSansM Nerd Font Propo', 'JetBrainsMono Nerd Font Mono', 'NoD2Coding', 'CaskaydiaCove Nerd Font Mono','Fira Code Retina', 'Cascadia Code', 'Consolas', 'Lucida Console'",
     "terminal.integrated.fontSize": 14,
     /*
 
