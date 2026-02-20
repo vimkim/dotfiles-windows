@@ -309,21 +309,8 @@
         "vim"
     ],
     "gitlens.defaultGravatarsStyle": "retro",
-    "remote.SSH.remotePlatform": {
-        "boostcamp-ncp": "linux",
-        "223.130.146.179": "linux",
-        "54.161.168.121": "linux",
-        "192.168.2.216": "linux",
-        "ssh216": "linux",
-        "ssh217": "linux",
-        "dev2-container-1": "linux",
-        "dev2-server": "linux"
-    },
     "gitlens.graph.dimMergeCommits": true,
     "gitlens.graph.layout": "editor",
-    "extensions.experimental.affinity": {
-        "asvetliakov.vscode-neovim": 1
-    },
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
