@@ -78,6 +78,9 @@ $env.config.hooks.env_change.PWD = (
 # c compiler error for nvim-treesitter
 path add 'C:\msys64\mingw64\bin'
 
+# claude code CLI
+path add ($env.HOME | path join '.local' 'bin')
+
 # winget-installed packages
 # path add ($env.LOCALAPPDATA | path join "Microsoft" "WinGet" "Packages" "Atuinsh.Atuin_Microsoft.Winget.Source_8wekyb3d8bbwe")
 
