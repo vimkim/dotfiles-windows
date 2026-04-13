@@ -68,14 +68,13 @@
     {
         "defaults": 
         {
-            "backgroundImage": "C:\\Users\\dhkim\\OneDrive\\Pictures\\nix-black-4k.png",
-            "backgroundImageOpacity": 0.1,
+            "backgroundImage": "desktopWallpaper",
+            "backgroundImageOpacity": 0.07,
             "colorScheme": "Catppuccin Frappe",
             "font": 
             {
-                "cellHeight": "1.5",
-                "face": "Maple Mono NF, D2CodingLigature Nerd Font Propo",
-                "size": 16,
+                "cellHeight": "1.1",
+                "face": "Maple Mono NF, Elice DigitalCoding ver.H, D2CodingLigature Nerd Font Propo",
                 "weight": "bold"
             },
             "intenseTextStyle": "none",
