@@ -132,7 +132,7 @@ alias xe = nvim ~/.config/my-scripts/bin/autorun.sh
 # Directory History
 ###############################################################################
 
-let history_file = ($nu.home-path | path join ".local" "share" "nu" "dirlog.json")
+let history_file = ($env.HOME | path join ".local" "share" "nu" "dirlog.json")
 
 if (
   'PWD' not-in $env.config.hooks.env_change
@@ -299,9 +299,10 @@ alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
 
 alias za = do { wsl -- SHELL=nu.exe /home/linuxbrew/.linuxbrew/bin/zellij }
 
-use ($nu.default-config-dir | path join mise.nu)
-
 # c compiler error for nvim-treesitter
 path add 'C:\msys64\mingw64\bin'
+
+# winget-installed packages
+# path add ($env.LOCALAPPDATA | path join "Microsoft" "WinGet" "Packages" "Atuinsh.Atuin_Microsoft.Winget.Source_8wekyb3d8bbwe")
 
 source ~/.local/share/atuin/init.nu
