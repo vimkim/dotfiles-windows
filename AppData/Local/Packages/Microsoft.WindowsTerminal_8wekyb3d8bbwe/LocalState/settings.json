@@ -20,13 +20,21 @@
             "id": "User.find"
         },
         {
-            "command": 
+            "command":
             {
                 "action": "splitPane",
                 "split": "auto",
                 "splitMode": "duplicate"
             },
             "id": "User.splitPane.A6751878"
+        },
+        {
+            "command":
+            {
+                "action": "newTab",
+                "profile": "{47302f9c-1ac4-566c-aa3e-8cf29889d6ab}"
+            },
+            "id": "User.newTab.Nushell"
         }
     ],
     "alwaysShowTabs": false,
@@ -55,6 +63,10 @@
         {
             "id": "User.splitPane.A6751878",
             "keys": "alt+shift+d"
+        },
+        {
+            "id": "User.newTab.Nushell",
+            "keys": "ctrl+1"
         }
     ],
     "launchMode": "maximized",
