@@ -240,6 +240,16 @@ alias fda = fd -H -I
 alias ff = fastfetch
 alias fmake = fzf-make
 alias fm = fzf-make
+# Refresh PATH when replacing Nu on Windows. Unlike Linux, Windows has no
+# exec(2), so a new shell otherwise inherits the current process's stale PATH.
+def exec-nu [] {
+  exec powershell.exe -NoProfile -Command '
+    $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = [Environment]::ExpandEnvironmentVariables($machine + ";" + $user)
+    nu
+  '
+}
 alias ghc = ~/.config/my-scripts/bin/github-clone-confirm.sh
 alias ghcf = ~/.config/my-scripts/bin/gh-clone-fuzzy.sh
 alias ghcu = ~/.config/my-scripts/bin/git-clone-user.sh
