@@ -29,7 +29,7 @@ def zellij-update-tabname-git [] {
         $repo_name
       };
 
-      if (($git_root | str downcase) != ($current_dir | str downcase)) {
+      if (($git_root | str lowercase) != ($current_dir | str lowercase)) {
         let pwd_name = ($current_dir | path parse | get stem | str substring 0..1);
         $tab_name = $"($short_repo_name):($pwd_name)"
       } else {
