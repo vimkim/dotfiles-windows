@@ -352,6 +352,4 @@ theme "catppuccin-mocha"
 
 default_layout "mycompact"
 
-layout_dir "~/AppData/Roaming/zellij/layouts"
-
 scrollback_editor "nvim -u ~/AppData/Roaming/zellij/config/edit.lua"
