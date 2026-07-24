@@ -1,0 +1,12 @@
+# Pinned Zellij plugins. Paths are relative to this Windows config directory:
+# %APPDATA%\zellij\config.
+
+["plugins/zellij-vertical-tabs.wasm"]
+    type = "file"
+    url = "https://github.com/cfal/zellij-vertical-tabs/releases/download/v0.1.0/zellij-vertical-tabs.wasm"
+    refreshPeriod = "168h"
+
+["plugins/zjstatus.wasm"]
+    type = "file"
+    url = "https://github.com/dj95/zjstatus/releases/download/v0.22.0/zjstatus.wasm"
+    refreshPeriod = "168h"

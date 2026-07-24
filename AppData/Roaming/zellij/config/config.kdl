@@ -1,7 +1,3 @@
-load_plugins {
-    "file:~/AppData/Roaming/zellij/plugins/zellij-new-tab-next-to-current.wasm"
-}
-
 // If you'd like to override the default keybindings completely, be sure to change "keybinds" to "keybinds clear-defaults=true"
 keybinds clear-defaults=true {
     normal {
@@ -164,13 +160,7 @@ keybinds clear-defaults=true {
         bind "z" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
         bind "," { SwitchToMode "RenameTab"; }
         bind "p" { GoToPreviousTab; SwitchToMode "Normal"; }
-        bind "n" {
-            MessagePlugin "file:~/AppData/Roaming/zellij/plugins/zellij-new-tab-next-to-current.wasm" {
-                name "new-tab-right"
-                launch_new false
-            }
-            SwitchToMode "Normal";
-        }
+        bind "n" { NewTab; SwitchToMode "Normal"; }
         bind "Left" { MoveFocus "Left"; SwitchToMode "Normal"; }
         bind "Right" { MoveFocus "Right"; SwitchToMode "Normal"; }
         bind "Down" { MoveFocus "Down"; SwitchToMode "Normal"; }
@@ -189,12 +179,7 @@ keybinds clear-defaults=true {
     }
     shared_except "locked" {
         bind "Alt g" { SwitchToMode "Locked"; }
-        bind "Alt n" {
-            MessagePlugin "file:~/AppData/Roaming/zellij/plugins/zellij-new-tab-next-to-current.wasm" {
-                name "new-tab-right"
-                launch_new false
-            }
-        }
+        bind "Alt n" { NewTab; }
         bind "Alt s" { NewPane "Down"; SwitchToMode "Normal"; }
         bind "Alt v" { NewPane "Right"; SwitchToMode "Normal"; }
         bind "Alt t" { ToggleFloatingPanes; SwitchFocus; }

@@ -10,7 +10,7 @@ layout {
     default_tab_template {
         children
         pane size=1 borderless=true {
-            plugin location="file:~/temp/zjstatus/zjstatus.wasm" {
+            plugin location="file:~/AppData/Roaming/zellij/config/plugins/zjstatus.wasm" {
                 tab_fullscreen_indicator "□ "
                 tab_sync_indicator "  "
                 tab_floating_indicator "󰉈 "
