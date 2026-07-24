@@ -17,6 +17,11 @@ only_detached = false
 format = "[$hash ]($style)"
 style = "bold yellow"
 
+[git_status]
+ahead = ""
+behind = ""
+diverged = ""
+
 [status]
 disabled = false
 
