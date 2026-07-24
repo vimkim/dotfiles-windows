@@ -116,10 +116,6 @@ layout {
                 tab_fullscreen_indicator "□ "
                 tab_sync_indicator "  "
                 tab_floating_indicator "󰉈 "
-                datetime "#[fg=#9399B2,bg=#181825] {format} "
-                datetime_format "%A, %d %b %Y %H:%M"
-                datetime_timezone "Asia/Seoul"
-
                 // -- Catppuccin Mocha --
                 color_rosewater "#f5e0dc"
                 color_flamingo "#f2cdcd"
@@ -191,18 +187,19 @@ layout {
                 notification_format_no_notifications ""
                 notification_show_interval "10"
 
-                command_host_command    "hostname"
+                command_host_command    "powershell.exe -NoLogo -NoProfile -NonInteractive -Command \"[Console]::Write([Environment]::MachineName)\""
                 command_host_format     "{stdout}"
                 command_host_interval   "0"
                 command_host_rendermode "static"
 
-                command_user_command    "whoami"
+                command_user_command    "powershell.exe -NoLogo -NoProfile -NonInteractive -Command \"[Console]::Write([Environment]::UserName)\""
                 command_user_format     "{stdout}"
                 command_user_interval   "10"
                 command_user_rendermode "static"
 
                 datetime          "{format}"
                 datetime_format   "%Y-%m-%d 󰅐 %H:%M"
+                datetime_timezone "Asia/Seoul"
 
             }
         }
