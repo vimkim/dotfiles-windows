@@ -4,7 +4,13 @@ alias fzfm = fzf --height 60% --reverse
 # cd & ls
 ###############################################################################
 
-alias l = ezam
+def --wrapped l [...args] {
+  if (which eza | is-not-empty) {
+    eza --icons=auto --group-directories-first ...$args
+  } else {
+    ls ...$args
+  }
+}
 def --env cl [
   dir?: string # Optional argument
 ] {
@@ -63,28 +69,6 @@ alias gr = __git_root
 alias gcd = __git_root
 
 ###############################################################################
-# clip
-###############################################################################
-
-def clip [] {
-  if ($nu.os-info.name == "linux") {
-    if (which wl-copy | is-empty) and (which xclip | is-empty) {
-      print "Error: neither 'xclip' nor 'wl-copy' is installed"
-    } else {
-      $in | xclip -selection clipboard
-    }
-  } else if (open /proc/version | str contains "microsoft") {
-    $in | clip.exe
-  } else if ($nu.os-info.name == "windows") {
-    $in | clip.exe
-  } else if ($nu.os-info.name == "macos") {
-    $in | pbcopy
-  } else {
-    print "Unsupported OS"
-  }
-}
-
-###############################################################################
 # Just
 ###############################################################################
 
@@ -111,8 +95,6 @@ alias je = nvim ./justfile
 alias ne = je
 alias ni = commandline edit (just.nu -f ./.just/justfile -d . | str trim)
 alias nie = nvim ./.just/justfile
-alias na = commandline edit (just.nu -f ~/.config/my-scripts/justfile -d . | str trim)
-alias nae = nvim ~/.config/my-scripts/justfile
 
 alias n1 = just n1
 alias n2 = just n2
@@ -132,66 +114,6 @@ alias ns = just ns
 alias np = just np
 alias nt = just nt
 alias nl = just nl
-
-alias x = commandline edit (~/.config/my-scripts/bin/autorun.sh | str trim)
-alias xe = nvim ~/.config/my-scripts/bin/autorun.sh
-
-###############################################################################
-# Directory History
-###############################################################################
-
-let history_file = ($env.HOME | path join ".local" "share" "nu" "dirlog.json")
-
-$env.config.hooks.env_change.PWD = (
-  $env.config.hooks.env_change.PWD | append {|before after|
-    # ensure directory & file exist
-    if not ($history_file | path exists) {
-      mkdir ($history_file | path dirname)
-      [] | save --force $history_file
-    }
-    open $history_file
-    | collect # gather into a list
-    | prepend $after # new $after at index 0
-    | uniq # de‐duplicate (keeps first occurrence)
-    | take 60 # keep most recent 60
-    | save --force $history_file
-  }
-)
-
-def view-dir-history [] {
-  if ($history_file | path exists) {
-    open $history_file
-  } else {
-    print "No directory history found."
-  }
-}
-alias vh = view-dir-history
-
-def --env cd-dir-history [] {
-  if not ($history_file | path exists) {
-    print "No directory history found."
-    return
-  }
-
-  let dir = (open $history_file | to text | fzfm)
-  if $dir == "" {
-    print "No directory selected."
-    return
-  }
-
-  if ($dir | path exists) {
-    cl $dir
-  } else {
-    # Remove the missing path from the history file
-    open $history_file
-    | collect
-    | where { $in != $dir }
-    | save --force $history_file
-
-    print $"Removed missing path from history: ($dir)"
-  }
-}
-alias ch = cd-dir-history
 
 ###############################################################################
 # Yazi
@@ -230,7 +152,7 @@ alias cc = claude
 alias cla = claude
 alias co = claude
 alias cx = cl (fd -H -I -t d | fzfm)
-alias activate = overlay use .venv/bin/activate.nu
+alias activate = overlay use .venv/Scripts/activate.nu
 alias dea = deactivate
 alias chez = chezmoi
 alias chezd = cl $"($env.HOME)/.local/share/chezmoi"
@@ -250,19 +172,19 @@ def exec-nu [] {
     nu
   '
 }
-alias ghc = ~/.config/my-scripts/bin/github-clone-confirm.sh
-alias ghcf = ~/.config/my-scripts/bin/gh-clone-fuzzy.sh
-alias ghcu = ~/.config/my-scripts/bin/git-clone-user.sh
 alias ghpr = do { gh pr view --json url -q .url }
 alias gfpa = git fetch --all --prune
-alias gl = ~/.config/my-scripts/bin/git-log.sh
-alias glf = ~/.config/my-scripts/bin/git-log-find.sh
-alias gloga = with-env {GL_OPS: "--all"} { git-log.sh }
+alias gl = git log --graph --decorate --oneline
+alias gloga = git log --graph --decorate --oneline --all
 alias gst = git status
 alias gsw = git switch
 alias h = cl ..
 
 def he [cmd?: string] {
+    if (which bat | is-empty) {
+        if ($cmd | is-empty) { $in } else { ^$cmd --help }
+        return
+    }
     if ($cmd | is-empty) {
         # no argument: act as a pipe filter
         bat -p -l help
@@ -278,16 +200,18 @@ def he [cmd?: string] {
 
 alias hg = hgrep
 alias i = cl
-alias ii = explorer
+alias ii = explorer.exe
 alias je = nvim ./justfile
 
 def lf [...file: string] {
-    eza ...($file | default []) -a -l --icons=always --color=always --sort=modified --only-files --show-symlinks | less -rXFS
+    if (which eza | is-not-empty) {
+      eza ...($file | default []) -a -l --icons=always --color=always --sort=modified --only-files --show-symlinks
+    } else {
+      ls ...($file | default [])
+    }
 }
 
-alias lj = lazyjj
 alias lz = lazygit
-alias lzd = lazydocker
 alias nvimh = cl '~/AppData/Local/nvim/'
 
 def --env mc [dir: string] {
@@ -299,7 +223,6 @@ alias mycub = cl ~/my-cubrid/
 alias ppath = echo $env.Path
 alias rga = rg --hidden --no-ignore
 alias rgall = rg --hidden --no-ignore
-alias rgf = rgf.sh
 alias sl = l
 alias prof = nvim $"($env.HOME)/.local/share/chezmoi/AppData/Roaming/nushell/config.nu"
 alias t = just default
@@ -309,12 +232,6 @@ alias v = nvim
 alias w = which
 alias wa = which -a
 alias ze = zellij
-alias zs = zellij -s
-alias zshrc = nvim ~/.local/share/chezmoi/dot_zshrc
-
-alias za = do { wsl -- SHELL=nu.exe /home/linuxbrew/.linuxbrew/bin/zellij }
-
-source ($nu.default-config-dir | path join bookmark.nu)
 alias ba = bm add
 alias bd = bm del
 alias bl = bm list

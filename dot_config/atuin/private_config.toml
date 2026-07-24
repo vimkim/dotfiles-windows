@@ -1,0 +1,7 @@
+filter_mode = "directory"
+style = "compact"
+inline_height = 30
+enter_accept = true
+
+[sync]
+records = true
