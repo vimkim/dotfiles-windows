@@ -1,0 +1,12 @@
+# Editor and operating-system leftovers.
+*.bak
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Runtime state must never become source configuration.
+AppData/Roaming/zellij/config/*.lock
+AppData/Roaming/zellij/config/*.heartbeat
+AppData/Roaming/zellij/config/session-metadata/
+AppData/Roaming/zellij/config/cache/

@@ -1,0 +1,10 @@
+# Repository-only documentation.
+README.md
+AGENTS.md
+WINDOWS_DOTFILES_UPGRADE_PLAN.md
+
+# Zellij runtime state is machine-local.
+AppData/Roaming/zellij/config/*.lock
+AppData/Roaming/zellij/config/*.heartbeat
+AppData/Roaming/zellij/config/session-metadata/**
+AppData/Roaming/zellij/config/cache/**
