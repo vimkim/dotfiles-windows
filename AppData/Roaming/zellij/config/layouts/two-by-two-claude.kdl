@@ -3,18 +3,18 @@ layout {
         pane split_direction="vertical" {
             pane split_direction="horizontal" {
                 pane command="cmd" focus=true {
-                    args "/c" "claude & nu"
+                    args "/d" "/c" "(where claude >nul 2>nul && claude) & nu"
                 }
                 pane command="cmd" {
-                    args "/c" "claude --permission-mode plan & nu"
+                    args "/d" "/c" "(where claude >nul 2>nul && claude --permission-mode plan) & nu"
                 }
             }
             pane split_direction="horizontal" {
                 pane command="cmd" {
-                    args "/c" "claude --permission-mode plan & nu"
+                    args "/d" "/c" "(where claude >nul 2>nul && claude --permission-mode plan) & nu"
                 }
                 pane command="cmd" {
-                    args "/c" "claude --permission-mode plan & nu"
+                    args "/d" "/c" "(where claude >nul 2>nul && claude --permission-mode plan) & nu"
                 }
             }
         }

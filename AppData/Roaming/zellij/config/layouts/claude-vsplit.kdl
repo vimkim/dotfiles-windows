@@ -3,7 +3,7 @@ layout {
         pane split_direction="vertical" {
             pane command="nu" focus=true
             pane command="cmd" {
-                args "/c" "claude & nu"
+                args "/d" "/c" "(where claude >nul 2>nul && claude) & nu"
             }
         }
     }

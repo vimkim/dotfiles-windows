@@ -64,3 +64,7 @@ The repository does not install packages during apply. Install only the
 features you want, then use exact-target applies. Zellij's two pinned WebAssembly
 plugins are the exception: chezmoi downloads them from their versioned release
 URLs when the Zellij config directory is applied.
+
+The retained Claude Zellij layouts treat the `claude` command as optional. If
+Claude Code is absent, each Claude pane opens Nushell without emitting a
+command-not-found error.
