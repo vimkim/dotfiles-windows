@@ -3,6 +3,9 @@ README.md
 AGENTS.md
 WINDOWS_DOTFILES_UPGRADE_PLAN.md
 
+# Machine-specific trust, approval, and sandbox policy.
+.codex/**
+
 # Zellij runtime state is machine-local.
 AppData/Roaming/zellij/config/*.lock
 AppData/Roaming/zellij/config/*.heartbeat

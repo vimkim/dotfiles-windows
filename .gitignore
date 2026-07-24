@@ -5,6 +5,9 @@
 .DS_Store
 Thumbs.db
 
+# Machine-specific Codex trust, approval, and sandbox policy.
+dot_codex/
+
 # Runtime state must never become source configuration.
 AppData/Roaming/zellij/config/*.lock
 AppData/Roaming/zellij/config/*.heartbeat
