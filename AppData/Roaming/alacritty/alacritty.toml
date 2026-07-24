@@ -37,7 +37,8 @@ style = "Block"
 blink_interval = 500
 
 [terminal.shell]
-program = "wsl ~"
+program = "wsl.exe"
+args = ["--distribution", "Ubuntu", "--cd", "~"]
 
 [env]
 ALACRITTY_ENV = "true"
@@ -45,6 +46,6 @@ WSLENV = "ALACRITTY_ENV/u"
 
 [general]
 # Configuration for Alacritty, the GPU enhanced terminal emulator
-import = ["~/.config/alacritty/catppuccin-frappe.toml"]
+import = ["~/.config/alacritty/catppuccin-mocha.toml"]
 
 [terminal]

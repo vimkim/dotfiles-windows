@@ -1,7 +1,24 @@
 [user]
 	email = kimdhyungg@gmail.com
 	name = Daehyun Kim
+[init]
+	defaultBranch = main
 [core]
 	autocrlf = input
+	editor = nvim
+[color]
+	ui = true
+[commit]
+	verbose = true
+[diff]
+	tool = nvimdiff
+[merge]
+	conflictStyle = zdiff3
+	tool = nvimdiff
+[difftool "nvimdiff"]
+	cmd = nvim -d \"$LOCAL\" \"$REMOTE\"
+[mergetool "nvimdiff"]
+	cmd = nvim -d \"$LOCAL\" \"$BASE\" \"$REMOTE\" \"$MERGED\"
+	trustExitCode = false
 [credential "https://github.com"]
 	username = vimkim

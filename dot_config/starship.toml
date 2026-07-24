@@ -9,6 +9,12 @@ disabled = false
 [directory]
 fish_style_pwd_dir_length = 5
 
+[git_commit]
+commit_hash_length = 7
+only_detached = false
+format = "[$hash ]($style)"
+style = "bold yellow"
+
 [status]
 disabled = false
 
@@ -26,17 +32,17 @@ style = "bold dimmed yellow"
 format = "CUB: [$env_value]($style) "
 style = "bold dimmed yellow"
 
-[custom.gcc]
-description = "Show GCC version"
-command = "echo gcc$(gcc --version | head -n 1 | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -n 1)"
-detect_files = ['CMakeLists.txt']
-style = "green"
+[env_var.CUBRID_DATABASES]
+format = "CUBDB: [$env_value]($style) "
+style = "bold dimmed yellow"
 
-[custom.clang]
-command = "echo clang$(clang --version | head -n1 | sed -n 's/.*clang version \\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*/\\1/p')"
-detect_files = ['CMakeLists.txt']
-description = "Show Clang version"
-style = "green"
+[custom.java_home]
+description = "Show JAVA_HOME when CUBRID is active"
+command = "Write-Output $env:JAVA_HOME"
+when = "$env:CUBRID -and $env:JAVA_HOME"
+shell = ["powershell.exe", "-NoProfile", "-Command"]
+format = "JAVA: [$output]($style) "
+style = "bold dimmed yellow"
 
 [kubernetes]
 disabled = false
@@ -88,4 +94,3 @@ Ubuntu = " "
 Unknown = " "
 Void = " "
 Windows = "󰍲 "
-
