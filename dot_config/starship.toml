@@ -1,3 +1,5 @@
+command_timeout = 1_000
+
 [shlvl]
 disabled = false
 format = 'SHLVL\($shlvl\) '
@@ -34,14 +36,6 @@ style = "bold dimmed yellow"
 
 [env_var.CUBRID_DATABASES]
 format = "CUBDB: [$env_value]($style) "
-style = "bold dimmed yellow"
-
-[custom.java_home]
-description = "Show JAVA_HOME when CUBRID is active"
-command = "Write-Output $env:JAVA_HOME"
-when = "$env:CUBRID -and $env:JAVA_HOME"
-shell = ["powershell.exe", "-NoProfile", "-Command"]
-format = "JAVA: [$output]($style) "
 style = "bold dimmed yellow"
 
 [kubernetes]
