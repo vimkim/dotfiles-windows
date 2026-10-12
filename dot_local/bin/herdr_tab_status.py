@@ -1,0 +1,432 @@
+#!/usr/bin/env python3
+
+"""Decorate Herdr tabs and publish a per-workspace agent inventory."""
+
+import argparse
+import msvcrt
+import hashlib
+import json
+import math
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unicodedata
+from collections import defaultdict
+from pathlib import Path
+
+SOURCE = "user:tab-status"
+MARKERS = {"working": "▶", "blocked": "!", "done": "✓", "idle": "○", "unknown": "?"}
+STATUS_ROWS = 13
+ROW_WIDTH = 44
+TOKEN_NAMES = ["tab_inventory", *[f"tab_states_{i}" for i in range(1, STATUS_ROWS + 1)]]
+TTL_MS = 60_000
+HEARTBEAT_SECONDS = 20
+
+
+from herdr_api import HerdrError, request
+
+
+def display_width(value):
+    return sum(
+        0
+        if unicodedata.combining(char)
+        else 2
+        if unicodedata.east_asian_width(char) in "WF"
+        else 1
+        for char in value
+    )
+
+
+def pack_rows(entries, separator):
+    rows = []
+    for entry in entries:
+        if rows and display_width(rows[-1] + separator + entry) <= ROW_WIDTH:
+            rows[-1] += separator + entry
+        else:
+            rows.append(entry)
+    return rows
+
+
+def original_label(label, record):
+    if record:
+        if label == record["base"]:
+            return label, False
+        if label in record["labels"]:
+            return record["base"], True
+        for suffix in record["suffixes"]:
+            if label.endswith(suffix):
+                return label[: -len(suffix)], True
+    return label, False
+
+
+def format_duration(seconds):
+    minutes = max(0, int(seconds // 60))
+    if minutes < 1:
+        return "<1m"
+    if minutes < 60:
+        return f"{minutes}m"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours}h{minutes:02d}m"
+    days, hours = divmod(hours, 24)
+    return f"{days}d{hours:02d}h"
+
+
+def build_plan(snapshot, saved_tabs, now=None):
+    # Missing agent data must never turn every live tab into a "shell" tab.
+    if any(
+        not isinstance(snapshot.get(key), list)
+        for key in ("workspaces", "tabs", "agents")
+    ):
+        raise HerdrError("snapshot is missing workspace, tab, or agent lists")
+    now = time.time() if now is None else now
+    agents_by_tab = defaultdict(list)
+    for agent in snapshot["agents"]:
+        agents_by_tab[agent["tab_id"]].append(agent)
+    tabs_by_workspace = defaultdict(list)
+    tabs = []
+    for tab in snapshot["tabs"]:
+        agents = agents_by_tab[tab["tab_id"]]
+        state = (
+            (tab["agent_status"] if tab["agent_status"] in MARKERS else "unknown")
+            if agents
+            else "shell"
+        )
+        marker = MARKERS.get(state, "—")
+        kinds = sorted({agent.get("agent") or "agent" for agent in agents})
+        name = "+".join(kind.title() for kind in kinds) if agents else "shell"
+        if len(agents) > 1:
+            name += f" ×{len(agents)}"
+        # Keep sidebar names bounded; original tab names are never shortened.
+        short_name = name if len(name) <= 18 else name[:17] + "…"
+        record = saved_tabs.get(tab["tab_id"])
+        state_since = (
+            record["state_since"] if record and record.get("state") == state else now
+        )
+        # A backwards wall-clock adjustment must never display negative ages.
+        state_since = min(state_since, now)
+        duration = format_duration(now - state_since) if agents else ""
+        age = f" {duration}" if duration else ""
+        base, owned = original_label(tab["label"], record)
+        suffix = f" [{marker} {name}{age}]"
+        item = {
+            "tab_id": tab["tab_id"],
+            "base": base,
+            "label": base + suffix,
+            "suffix": suffix,
+            "current": tab["label"],
+            "owned": owned,
+            "number": tab["number"],
+            "marker": marker,
+            "state": state,
+            "state_since": state_since,
+            "duration": duration,
+            "agent_count": len(agents),
+            "summary": f"{tab['number']} {marker} {short_name}{age}",
+            "compact_summary": f"{tab['number']}{marker}{duration}",
+        }
+        tabs.append(item)
+        tabs_by_workspace[tab["workspace_id"]].append(item)
+    workspaces = {}
+    for workspace in snapshot["workspaces"]:
+        ordered = sorted(
+            tabs_by_workspace[workspace["workspace_id"]], key=lambda tab: tab["number"]
+        )
+        rows = pack_rows([tab["summary"] for tab in ordered], " · ")
+        if len(rows) > STATUS_ROWS:
+            rows = pack_rows([tab["compact_summary"] for tab in ordered], " ")
+        if len(rows) > STATUS_ROWS:
+            rows = rows[: STATUS_ROWS - 1] + ["More tab states in the tab bar"]
+        tokens = dict.fromkeys(TOKEN_NAMES)
+        agent_count = sum(tab["agent_count"] for tab in ordered)
+        counts = [
+            (len(ordered), "tab"),
+            (workspace["pane_count"], "pane"),
+            (agent_count, "agent"),
+        ]
+        tokens["tab_inventory"] = " · ".join(
+            f"{count} {noun}{'' if count == 1 else 's'}" for count, noun in counts
+        )
+        for index, row in enumerate(rows, 1):
+            tokens[f"tab_states_{index}"] = row
+        workspaces[workspace["workspace_id"]] = tokens
+    return {"tabs": tabs, "workspaces": workspaces}
+
+
+class Updater:
+    def __init__(self, socket_path, directory):
+        self.socket_path = socket_path
+        self.directory = directory
+        self.state_path = directory / "state.json"
+        self.tabs = {}
+        self.published = {}
+        if self.state_path.exists():
+            state = json.loads(self.state_path.read_text(encoding="utf-8"))
+            if state.get("version") != 1 or not isinstance(state.get("tabs"), dict):
+                raise HerdrError(f"invalid label journal: {self.state_path}")
+            self.tabs = state["tabs"]
+            for record in self.tabs.values():
+                if (
+                    not isinstance(record, dict)
+                    or not isinstance(record.get("base"), str)
+                    or not isinstance(record.get("labels"), list)
+                    or not all(isinstance(value, str) for value in record["labels"])
+                    or not isinstance(record.get("suffixes"), list)
+                    or not all(
+                        isinstance(value, str) and value for value in record["suffixes"]
+                    )
+                ):
+                    raise HerdrError(f"invalid label journal: {self.state_path}")
+                # Older journals contain only label ownership. Timing starts on
+                # the first observation after upgrade; keep their original names.
+                if "state" in record or "state_since" in record:
+                    since = record.get("state_since")
+                    if (
+                        record.get("state") not in (*MARKERS, "shell")
+                        or isinstance(since, bool)
+                        or not isinstance(since, (int, float))
+                        or not math.isfinite(since)
+                        or since < 0
+                    ):
+                        raise HerdrError(f"invalid label journal: {self.state_path}")
+
+    def snapshot(self):
+        return request(self.socket_path, "session.snapshot", {})["snapshot"]
+
+    def save(self):
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self.directory, delete=False
+            ) as stream:
+                temporary = Path(stream.name)
+                json.dump({"version": 1, "tabs": self.tabs}, stream, ensure_ascii=False)
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.replace(self.state_path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    def preview(self):
+        return build_plan(self.snapshot(), self.tabs)
+
+    def update(self):
+        plan = self.preview()
+        journal = {}
+        for tab in plan["tabs"]:
+            labels = [tab["label"]]
+            suffixes = [tab["suffix"]]
+            if tab["owned"]:
+                labels.append(tab["current"])
+                previous = self.tabs[tab["tab_id"]]
+                suffixes.extend(
+                    suffix
+                    for suffix in previous["suffixes"]
+                    if tab["current"].endswith(suffix)
+                )
+            journal[tab["tab_id"]] = {
+                "base": tab["base"],
+                "labels": list(dict.fromkeys(labels)),
+                "suffixes": list(dict.fromkeys(suffixes)),
+                "state": tab["state"],
+                "state_since": tab["state_since"],
+            }
+        if journal != self.tabs:
+            # Persist both possible labels before rename: a lost API reply must
+            # not lose the original name or double-decorate after a restart.
+            self.tabs = journal
+            self.save()
+        for tab in plan["tabs"]:
+            if tab["label"] != tab["current"]:
+                request(
+                    self.socket_path,
+                    "tab.rename",
+                    {"tab_id": tab["tab_id"], "label": tab["label"]},
+                )
+        now = time.monotonic()
+        for workspace_id, tokens in plan["workspaces"].items():
+            previous, published_at = self.published.get(workspace_id, (None, 0))
+            if tokens != previous or now - published_at >= HEARTBEAT_SECONDS:
+                request(
+                    self.socket_path,
+                    "workspace.report_metadata",
+                    {
+                        "workspace_id": workspace_id,
+                        "source": SOURCE,
+                        "tokens": tokens,
+                        "ttl_ms": TTL_MS,
+                    },
+                )
+                self.published[workspace_id] = (tokens, now)
+        self.published = {
+            key: value
+            for key, value in self.published.items()
+            if key in plan["workspaces"]
+        }
+        return plan
+
+    def restore(self):
+        snapshot = self.snapshot()
+        for tab in snapshot["tabs"]:
+            base, owned = original_label(tab["label"], self.tabs.get(tab["tab_id"]))
+            if owned:
+                request(
+                    self.socket_path,
+                    "tab.rename",
+                    {"tab_id": tab["tab_id"], "label": base},
+                )
+        for workspace in snapshot["workspaces"]:
+            request(
+                self.socket_path,
+                "workspace.report_metadata",
+                {
+                    "workspace_id": workspace["workspace_id"],
+                    "source": SOURCE,
+                    "tokens": dict.fromkeys(TOKEN_NAMES),
+                },
+            )
+        self.tabs = {}
+        self.save()
+
+
+def open_lock(directory, name="lock"):
+    descriptor = os.open(directory / name, os.O_CREAT | os.O_RDWR | os.O_BINARY)
+    try:
+        if os.fstat(descriptor).st_size == 0:
+            os.write(descriptor, b"\0")
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+    except OSError:
+        os.close(descriptor)
+        return None
+    return descriptor
+
+
+def start_worker(socket_path, directory, interval):
+    # Serialize launches until the child owns the session lock. CRT descriptors
+    # cannot be inherited with POSIX pass_fds on Windows.
+    startup_lock = open_lock(directory, "startup.lock")
+    if startup_lock is None:
+        return
+    try:
+        descriptor = open_lock(directory)
+        if descriptor is None:
+            return
+        os.close(descriptor)
+        request(socket_path, "ping", {})
+        (directory / "stop").unlink(missing_ok=True)
+        with (directory / "updater.log").open("ab", buffering=0) as log:
+            process = subprocess.Popen(
+                [sys.executable, "-X", "utf8", str(Path(__file__).resolve()),
+                 "run", "--interval", str(interval)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=log,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                close_fds=True,
+            )
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            descriptor = open_lock(directory)
+            if descriptor is None:
+                return
+            os.close(descriptor)
+            if process.poll() is not None:
+                raise HerdrError(f"updater exited during startup; see {directory / 'updater.log'}")
+            time.sleep(0.02)
+        raise HerdrError(f"updater did not acquire its lock; see {directory / 'updater.log'}")
+    finally:
+        os.close(startup_lock)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", choices=("start", "run", "once", "preview", "stop"))
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=2,
+        help="refresh interval in seconds (default: 2)",
+    )
+    args = parser.parse_args()
+    if not math.isfinite(args.interval) or args.interval < 0.05:
+        parser.error("interval must be a finite number of at least 0.05 seconds")
+    if os.environ.get("HERDR_ENV") != "1" or not os.environ.get("HERDR_SOCKET_PATH"):
+        parser.error("run inside a Herdr pane with HERDR_SOCKET_PATH set")
+    socket_path = str(Path(os.environ["HERDR_SOCKET_PATH"]).resolve())
+    cache = Path(os.environ.get("XDG_CACHE_HOME") or os.environ.get("LOCALAPPDATA") or Path.home() / "AppData/Local")
+    key = hashlib.sha256(socket_path.encode()).hexdigest()[:20]
+    directory = cache / "herdr-tab-status" / key
+    if args.command == "preview":
+        print(
+            json.dumps(
+                Updater(socket_path, directory).preview(), ensure_ascii=False, indent=2
+            )
+        )
+        return
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    stop_path = directory / "stop"
+    if args.command == "start":
+        start_worker(socket_path, directory, args.interval)
+        return
+    descriptor = open_lock(directory)
+    if descriptor is None:
+        if args.command == "stop":
+            stop_path.touch(mode=0o600)
+        else:
+            raise HerdrError("an updater is already running for this session")
+        return
+    try:
+        updater = Updater(socket_path, directory)
+        if args.command == "once":
+            updater.update()
+            return
+        if args.command == "stop":
+            updater.restore()
+            stop_path.unlink(missing_ok=True)
+            return
+        stop_path.unlink(missing_ok=True)
+        stopped = threading.Event()
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(signum, lambda _signum, _frame: stopped.set())
+        last_error = None
+        try:
+            while not stopped.is_set() and not stop_path.exists():
+                try:
+                    updater.update()
+                    last_error = None
+                except (OSError, ValueError, KeyError, HerdrError) as error:
+                    message = str(error)
+                    if message != last_error:
+                        print(
+                            f"herdr-tab-status: {message}", file=sys.stderr, flush=True
+                        )
+                    last_error = message
+                    if not Path(socket_path).exists():
+                        break
+                stopped.wait(args.interval)
+        finally:
+            try:
+                updater.restore()
+            except (OSError, ValueError, KeyError, HerdrError) as error:
+                print(
+                    f"herdr-tab-status: restore pending: {error}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            stop_path.unlink(missing_ok=True)
+    finally:
+        os.close(descriptor)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, HerdrError) as error:
+        print(f"herdr-tab-status: {error}", file=sys.stderr)
+        raise SystemExit(1)

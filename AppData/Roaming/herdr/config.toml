@@ -1,0 +1,97 @@
+onboarding = false
+
+[terminal]
+default_shell = "nu.exe"
+
+[experimental]
+pane_history = false
+
+[keys]
+prefix = "ctrl+a"
+
+# Workspaces follow sidebar order.
+workspace_picker = "alt+w"
+previous_workspace = ["alt+p", "alt+up"]
+next_workspace = ["alt+n", "alt+down"]
+new_workspace = "alt+c"
+rename_workspace = "alt+shift+w"
+close_workspace = "alt+shift+x"
+switch_workspace = ["alt+1..9", "prefix+shift+1..9"]
+
+# Tabs follow horizontal tab-bar order.
+new_tab = "alt+t"
+rename_tab = "alt+shift+t"
+close_tab = "alt+x"
+previous_tab = ["alt+h", "alt+left"]
+next_tab = ["alt+i", "alt+right"]
+move_tab_previous = "alt+shift+h"
+move_tab_next = "alt+shift+i"
+# Shifted numbers are !, @, #, $, %, ^, &, *, (.
+switch_tab = "alt+shift+1..9"
+
+edit_scrollback = "alt+e"
+copy_mode = "alt+s"
+focus_pane_down = "alt+j"
+focus_pane_up = "alt+k"
+focus_pane_right = "alt+l"
+split_vertical = "alt+v"
+zoom = "alt+f"
+
+[[keys.command]]
+key = ["alt+comma", "alt+shift+p", "alt+shift+up"]
+type = "shell"
+command = 'call "%USERPROFILE%\.local\bin\herdr-move-workspace.cmd" up'
+description = "move workspace up"
+
+[[keys.command]]
+key = ["alt+.", "alt+shift+n", "alt+shift+down"]
+type = "shell"
+command = 'call "%USERPROFILE%\.local\bin\herdr-move-workspace.cmd" down'
+description = "move workspace down"
+
+[ui]
+confirm_close = true
+prompt_new_tab_name = false
+agent_panel_sort = "priority"
+# Native Windows uses the automatic drawn cursor to avoid ConPTY flicker.
+host_cursor = "auto"
+sidebar_width = 56
+sidebar_min_width = 48
+sidebar_max_width = 72
+status_indicators = "symbols"
+
+[ui.sidebar.agents]
+row_gap = 0
+rows = [
+    ["state_icon", "agent", "state_text"],
+    ["machine", "workspace"],
+    ["tab", "pane"],
+    ["terminal_title_stripped"],
+]
+
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [
+    ["state_icon", "workspace", "state_text"],
+    ["branch", "git_status"],
+    ["$tab_inventory"],
+    ["$tab_states_1"],
+    ["$tab_states_2"],
+    ["$tab_states_3"],
+    ["$tab_states_4"],
+    ["$tab_states_5"],
+    ["$tab_states_6"],
+    ["$tab_states_7"],
+    ["$tab_states_8"],
+    ["$tab_states_9"],
+    ["$tab_states_10"],
+    ["$tab_states_11"],
+    ["$tab_states_12"],
+    ["$tab_states_13"],
+]
+
+[theme]
+name = "catppuccin"
+
+[theme.custom]
+overlay0 = "#cad3f5"

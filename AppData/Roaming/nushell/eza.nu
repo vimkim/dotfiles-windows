@@ -23,35 +23,14 @@ $env.EZA_SORT_MODIFIED = [
   -r
 ]
 
-# Define the 'l' alias/function
-def ezam [...args] {
-
-  let big_threshold = 400
-  # let entry_count   = (fd -d1 --hidden --no-ignore | wc -l | into int)
-  let entry_count   = (fd -d1 --hidden --no-ignore | lines | length )
-  let rows          = (term size | get rows)
-  let max_lines     = ($rows * 0.8 | math floor)
-
-  if $entry_count > $big_threshold {
-    # Fast path: structured Nu ls sorted by modified, then page
-    ls -a --threads
-    | first ($max_lines * 2)
-    | sort-by modified -r
-    | table
-    | head -n $max_lines
-    | less -XFRS
-
-    echo "...skipped & approx sorted"
-  } else {
-    # Small dir: your richer, slower listing
-    eza --no-user --no-permissions ...$env.EZA_LONG_OPTIONS --icons ...$env.EZA_SORT_MODIFIED --grid ...$args
-  }
-
+# Detailed newest-first listings; the helper pages only in a real terminal.
+def --wrapped ezam [...args: string] {
+  let helper = ($nu.home-dir | path join ".local" "bin" "listing.py")
+  if (which eza | is-not-empty) and (which python | is-not-empty) and ($helper | path exists) {
+    ^python -X utf8 $helper ls-by-time --no-user --no-permissions --icons=auto ...$args
+  } else if (which eza | is-not-empty) {
+    ^eza --all --long --sort=modified --reverse --icons=auto ...$args
+  } else { ls ...$args }
 }
-
-# Define the 'l' alias/function
-def ezaml [...args] {
-  eza --group-directories-first -alF --time-style=relative --icons --sort=modified ...$args
-}
+def --wrapped ezaml [...args: string] { ezam ...$args }
 alias ll = ezaml
-

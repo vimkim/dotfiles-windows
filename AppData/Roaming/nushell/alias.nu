@@ -4,55 +4,84 @@ alias fzfm = fzf --height 60% --reverse
 # cd & ls
 ###############################################################################
 
-def --wrapped l [...args] {
-  if (which eza | is-not-empty) {
-    eza --icons=auto --group-directories-first ...$args
-  } else {
-    ls ...$args
-  }
-}
-def --env cl [
-  dir?: string # Optional argument
-] {
-  let target_dir = if $dir != null {
-    $dir
-  } else {
-    ls -a | where type in ['dir' 'symlink'] | sort-by modified -r | get name | to text | fzfm
-  }
+const helper_bin = ($nu.home-dir | path join ".local" "bin")
 
-  if $target_dir != null {
-    cd $target_dir
-    l
-  } else {
-    print "No directory selected."
-  }
+# JSON keeps selected paths separate from display metadata and shell syntax.
+def _helper_pick [script: string, args: list<string>] {
+  if (which python | is-empty) { error make {msg: "This picker requires Python 3."} }
+  let result = (do { ^python -X utf8 ($helper_bin | path join $script) ...$args } | complete)
+  if $result.exit_code in [1 130] { return null }
+  if $result.exit_code != 0 { error make {msg: ($result.stderr | str trim)} }
+  if ($result.stdout | str trim | is-empty) { return null }
+  $result.stdout | from json
 }
 
-def vc [query?: string] {
-  let file = (
-    ls -a
-    | where type in ['file' 'symlink']
-    | sort-by modified -r
-    | get name
-    | str join (char nl)
-    | fzfm --query ($query | default "")
-  )
+def _helper_command [script: string, args: list<string>] {
+  let result = (do { ^nu --no-config-file ($helper_bin | path join $script) ...$args } | complete)
+  if $result.exit_code != 0 { error make {msg: ($result.stderr | str trim)} }
+  $result.stdout | str trim
+}
 
-  if $file != "" {
-    nvim $file
+def _helper_paste [command: string] {
+  if $command == "" { return }
+  if $nu.is-interactive { commandline edit $command } else { print $command }
+}
+
+def --wrapped l [...args: string] {
+  let helper = ($helper_bin | path join "listing.py")
+  if (which eza | is-not-empty) and (which python | is-not-empty) and ($helper | path exists) {
+    ^python -X utf8 $helper ls-by-time --no-user --no-permissions --icons=auto ...$args
+  } else if (which eza | is-not-empty) {
+    ^eza --all --long --sort=modified --reverse --icons=auto ...$args
+  } else { ls ...$args }
+}
+
+def --env cl [dir?: string, --query: string] {
+  let target = if $dir != null and $query == null { $dir } else {
+    _helper_pick "dir_picker.py" ["--json" $"--query=($query | default '')" "--" ($dir | default ".")]
+  }
+  if $target == null { return }
+  cd $target
+  l
+}
+
+alias cv = cl
+
+def --env cz [...args: string] {
+  if (which zoxide | is-empty) { error make {msg: "cz requires zoxide."} }
+  zi ...$args
+  l
+}
+
+def _file_selection [query: string, max_depth: any, no_ignore: bool, no_hidden: bool] {
+  mut args = ["--json" $"--query=($query)"]
+  if $max_depth != null { $args = ($args | append ["--max-depth" ($max_depth | into string)]) }
+  if $no_ignore { $args = ($args | append "--no-ignore") }
+  if $no_hidden { $args = ($args | append "--no-hidden") }
+  _helper_pick "file_picker.py" $args
+}
+
+def vc [query: string = "", --max-depth: int = 1, --no-ignore, --no-hidden] {
+  let file = (_file_selection $query $max_depth $no_ignore $no_hidden)
+  if $file != null {
+    let editor = ($env.EDITOR? | default "notepad.exe")
+    ^$editor $file
   }
 }
 
-def --env cf [query?: string] {
-  let selected = (
-    fd --type f --type l --no-ignore --hidden --follow
-    | fzfm --query ($query | default "")
-  )
-
-  if $selected != null and ($selected | str trim) != "" {
-    cd ($selected | path dirname)
-  }
+def --env cf [query: string = "", --max-depth: int, --no-ignore, --no-hidden] {
+  let file = (_file_selection $query $max_depth $no_ignore $no_hidden)
+  if $file != null { cl ($file | path dirname) }
 }
+
+def --env fp [--depth (-d): int = 3, ...query: string] {
+  let output = (_helper_command "find-project.nu" ["--json" "--depth" ($depth | into string) ...$query])
+  if $output != "" { cl ($output | from json) }
+}
+
+def --env --wrapped dv [...args: string] { _helper_paste (_helper_command "git-diffview.nu" ["-p" ...$args]) }
+def --env --wrapped dn [...args: string] { _helper_paste (_helper_command "git-diffnav.nu" ["-p" ...$args]) }
+alias re = rerun-on-enter
 
 # Jump to the root directory of the current Git repository
 def --env __git_root [] {
@@ -74,26 +103,29 @@ alias gcd = __git_root
 
 # Custom completer for just recipes
 def "nu-complete just-recipes" [] {
-    if (not ("./justfile" | path exists)) { return [] }
+    if (not ("./justfile" | path exists)) or (which just | is-empty) { return [] }
     just -f ./justfile -d . --summary | split row ' ' | where { $in != "" }
 }
 
-# n: no args → fzf + paste to edit line; with args → execute just directly
-def --env --wrapped n [...args: string@"nu-complete just-recipes"] {
-    if ($args | is-empty) {
-        commandline edit (just.nu -f ./justfile -d . | str trim)
-    } else {
-        just -f ./justfile -d . ...$args
-    }
+# Pick a recipe, then edit/paste the actual just command for history.
+def --env --wrapped ji [...args: string@"nu-complete just-recipes"] {
+  if ($args | is-not-empty) { ^just -f ./justfile -d . ...$args; return }
+  let recipe = (_helper_command "just-pick-and-print.nu" ["-f" "./justfile" "-d" "."])
+  if $recipe != "" { _helper_paste $"just ($recipe | to json --raw)" }
 }
-
+alias n = ji
 alias j = just
-alias jj = just --choose
-alias nn = just --choose
-alias jc = just --choose
+alias jj = ji
+alias nn = ji
+alias jc = ji
 alias je = nvim ./justfile
 alias ne = je
-alias ni = commandline edit (just.nu -f ./.just/justfile -d . | str trim)
+
+def --env ni [] {
+  let file = "./.just/justfile"
+  let recipe = (_helper_command "just-pick-and-print.nu" ["-f" $file "-d" "."])
+  if $recipe != "" { _helper_paste $"just -f ($file | to json --raw) -d . ($recipe | to json --raw)" }
+}
 alias nie = nvim ./.just/justfile
 
 alias n1 = just n1
@@ -151,7 +183,11 @@ alias c = cl
 alias cc = claude
 alias cla = claude
 alias co = claude
-alias cx = cl (fd -H -I -t d | fzfm)
+def --env cx [query: string = ""] {
+  if (which fd | is-empty) or (which fzf | is-empty) { error make {msg: "cx requires fd and fzf."} }
+  let selected = (do { ^fd -H -I -t d --exclude .git | ^fzf --height=60% --reverse --query=$query } | complete)
+  if $selected.exit_code == 0 and ($selected.stdout | str trim | is-not-empty) { cl ($selected.stdout | str trim) }
+}
 alias activate = overlay use .venv/Scripts/activate.nu
 alias dea = deactivate
 alias chez = chezmoi
@@ -205,7 +241,7 @@ alias je = nvim ./justfile
 
 def lf [...file: string] {
     if (which eza | is-not-empty) {
-      eza ...($file | default []) -a -l --icons=always --color=always --sort=modified --only-files --show-symlinks
+      l --only-files ...$file
     } else {
       ls ...($file | default [])
     }

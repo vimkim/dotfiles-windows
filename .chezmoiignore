@@ -2,6 +2,10 @@
 README.md
 AGENTS.md
 WINDOWS_DOTFILES_UPGRADE_PLAN.md
+tests
+tests/**
+**/__pycache__
+**/__pycache__/**
 
 # Machine-specific trust, approval, and sandbox policy.
 .codex/**

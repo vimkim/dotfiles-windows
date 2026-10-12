@@ -4,6 +4,7 @@
 *~
 .DS_Store
 Thumbs.db
+__pycache__/
 
 # Machine-specific Codex trust, approval, and sandbox policy.
 dot_codex/

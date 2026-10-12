@@ -25,6 +25,11 @@ const eza_init = if (($nu.default-config-dir | path join "eza.nu") | path exists
 } else { null }
 source $eza_init
 
+const zoxide_init = if (($nu.default-config-dir | path join "zoxide.nu") | path exists) {
+  ($nu.default-config-dir | path join "zoxide.nu")
+} else { null }
+source $zoxide_init
+
 const alias_init = if (($nu.default-config-dir | path join "alias.nu") | path exists) {
   ($nu.default-config-dir | path join "alias.nu")
 } else { null }
@@ -60,6 +65,16 @@ const mise_module = if (($nu.default-config-dir | path join "mise.nu") | path ex
 } else { null }
 use $mise_module
 
+# Prefer the native tools to obsolete mise shims left by older installations.
+let local_appdata = ($env.LOCALAPPDATA? | default ($nu.home-dir | path join "AppData" "Local"))
+let winget_packages = ($local_appdata | path join "Microsoft" "WinGet" "Packages")
+if ($winget_packages | path exists) {
+  for directory in (ls $winget_packages | where type == "dir" | get name | where {|path|
+    let name = ($path | path basename)
+    ($name | str starts-with "ajeetdsouza.zoxide_") or ($name | str starts-with "Casey.Just_")
+  }) { path add $directory }
+}
+
 if (which sccache | is-not-empty) {
   $env.RUSTC_WRAPPER = "sccache"
 }
@@ -69,6 +84,11 @@ if ($msys_bin | path exists) { path add $msys_bin }
 
 let local_bin = ($env.HOME | path join ".local" "bin")
 if ($local_bin | path exists) { path add $local_bin }
+
+const herdr_init = if (($nu.default-config-dir | path join "herdr.nu") | path exists) {
+  ($nu.default-config-dir | path join "herdr.nu")
+} else { null }
+source $herdr_init
 
 $env.config.hooks.env_change.PWD = (
   $env.config.hooks.env_change.PWD
