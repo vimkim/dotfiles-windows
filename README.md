@@ -32,6 +32,40 @@ Common source-to-target mappings:
 | `dot_gitconfig` | `%USERPROFILE%\.gitconfig` |
 | `dot_wezterm.lua` | `%USERPROFILE%\.wezterm.lua` |
 
+## Agent guidance
+
+The instruction strategy from `dotfiles-linux` is adapted for native Windows:
+task worktrees from `main`, `develop`, and `feature/*`; focused checks and local
+commits before review; one approval for rebase and fast-forward merge; deployment
+of each affected target after that approval; and safe worktree/branch cleanup.
+An explicit deployment request also authorizes exact-target apply from a task
+checkout. Push still requires a separate request.
+
+| Source | Target |
+| --- | --- |
+| `dot_codex/AGENTS.md` | `%USERPROFILE%\.codex\AGENTS.md` |
+| `dot_claude/CLAUDE.md.tmpl` (includes global guidance) | `%USERPROFILE%\.claude\CLAUDE.md` |
+| `AppData/Roaming/nushell/AGENTS.md` | `%APPDATA%\nushell\AGENTS.md` |
+| `AppData/Roaming/nushell/CLAUDE.md.tmpl` (includes Nushell guidance) | `%APPDATA%\nushell\CLAUDE.md` |
+
+Root `AGENTS.md` and `CLAUDE.md` are identical repository-only instructions.
+`docs/agents/` holds domain, issue-tracker, and triage context for this Windows
+repository; these files are not deployed into the home directory. Codex runtime
+state remains excluded from both Git and chezmoi.
+
+The Windows guidance uses native paths and shell syntax, optional skills/tools,
+hidden background helpers, and Nushell's actual default configuration directory.
+Nushell imports must select an existing file or `null` at parse time.
+
+Validate instruction changes by rendering the four exact targets with
+`chezmoi cat -- <absolute-target>`, comparing the shared copies, and inspecting
+`chezmoi managed --path-style absolute`. Apply each file separately and verify
+its exact-target diff is empty. Start a new Codex session after updating global
+guidance so its instruction chain is rebuilt. A customized `CODEX_HOME` uses
+that directory for global instructions instead of `%USERPROFILE%\.codex`.
+If a configured diff command or pager needs an unavailable executable (such as
+POSIX `cat`), use `chezmoi --use-builtin-diff --no-pager diff -- <absolute-target>`.
+
 ## Herdr
 
 The Linux Herdr keybindings, Catppuccin theme, expanded sidebar, and tab agent

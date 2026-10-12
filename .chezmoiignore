@@ -1,16 +1,20 @@
 # Repository-only documentation.
 README.md
 AGENTS.md
+CLAUDE.md
+docs
+docs/**
 WINDOWS_DOTFILES_UPGRADE_PLAN.md
 tests
 tests/**
 **/__pycache__
 **/__pycache__/**
 
-# Only the Codex configuration is managed; runtime state stays machine-local.
+# Only the Codex configuration and global guidance are managed.
 .codex/**
 !.codex
 !.codex/config.toml
+!.codex/AGENTS.md
 
 # Zellij runtime state is machine-local.
 AppData/Roaming/zellij/config/*.lock

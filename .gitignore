@@ -6,9 +6,10 @@
 Thumbs.db
 __pycache__/
 
-# Only the Codex configuration belongs in source control; exclude runtime state.
+# Only the Codex configuration and global guidance belong in source control.
 dot_codex/*
 !dot_codex/config.toml
+!dot_codex/AGENTS.md
 
 # Runtime state must never become source configuration.
 AppData/Roaming/zellij/config/*.lock
