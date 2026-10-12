@@ -136,6 +136,9 @@ def main():
     # User LESS settings must not disable wrapping or short-output auto-exit.
     pager_env = os.environ.copy()
     pager_env.pop("LESS", None)
+    # eza emits UTF-8; Nerd Font icons occupy Unicode private-use ranges.
+    pager_env["LESSCHARSET"] = "utf-8"
+    pager_env["LESSUTFCHARDEF"] = "E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p"
     with subprocess.Popen(command, stdout=subprocess.PIPE) as listing:
         try:
             with subprocess.Popen([less, "-FRX"], stdin=listing.stdout, env=pager_env) as pager:

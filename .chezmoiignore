@@ -7,8 +7,10 @@ tests/**
 **/__pycache__
 **/__pycache__/**
 
-# Machine-specific trust, approval, and sandbox policy.
+# Only the Codex configuration is managed; runtime state stays machine-local.
 .codex/**
+!.codex
+!.codex/config.toml
 
 # Zellij runtime state is machine-local.
 AppData/Roaming/zellij/config/*.lock
