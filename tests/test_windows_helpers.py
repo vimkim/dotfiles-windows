@@ -206,6 +206,38 @@ class WindowsHelperTests(unittest.TestCase):
         cancelled = self.nu("just-pick-and-print.nu", "-f", file, "-d", self.data, extra={"FZF_DEFAULT_OPTS": "--filter=ABSENT"})
         self.assertEqual(self.success(cancelled), "")
 
+    def test_just_preview_runs_through_fzf_windows_shell(self):
+        file = self.justfile()
+        preview_output = self.root / "preview output 한글.txt"
+        fzf = shutil.which("fzf")
+        probe = self.mock_bin / "fzf_probe.py"
+        # Use fzf's own executor and placeholder expansion without manual input.
+        # Filter mode skips previews and would miss Windows shell quoting bugs.
+        probe.write_text(
+            "import subprocess, sys\n"
+            "args = sys.argv[1:]\n"
+            "preview = args[args.index('--preview') + 1]\n"
+            f"capture = {str(preview_output)!r}\n"
+            "action = f'focus:execute-silent({preview} > \"{capture}\" 2>&1)+accept'\n"
+            f"result = subprocess.run([{fzf!r}, *args, '--sync', "
+            "'--preview-window=hidden', '--bind', action], timeout=10)\n"
+            "sys.exit(result.returncode)\n",
+            encoding="utf-8",
+        )
+        (self.mock_bin / "fzf.cmd").write_text(
+            f'@echo off\n"{sys.executable}" -X utf8 "{probe}" %*\n', encoding="utf-8"
+        )
+        for extra in [{}, {"SHELL": "powershell.exe", "FZF_DEFAULT_OPTS": "--with-shell=powershell.exe"}]:
+            with self.subTest(extra=extra):
+                preview_output.unlink(missing_ok=True)
+                selected = self.nu("just-pick-and-print.nu", "-f", file, "-d", self.data, extra=extra)
+                self.assertEqual(self.success(selected), "build")
+                self.assertTrue(preview_output.exists(), "fzf did not run the preview command")
+                output = preview_output.read_text(encoding="utf-8", errors="replace")
+                self.assertIn("build:", output)
+                self.assertIn("@echo BUILD_EXECUTED", output)
+                self.assertNotIn("is not recognized", output)
+
     def test_n_jj_and_ni_print_editable_actual_just_commands(self):
         self.justfile()
         for command in ["n", "jj", "ji"]:

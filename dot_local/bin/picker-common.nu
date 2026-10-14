@@ -25,12 +25,14 @@ export def pick-record [records: list<record>, query: string = "", prompt: strin
   } | str join (char nl))
   # Generated indices enter cmd.exe. Ref names and paths remain JSON data.
   let preview = $'"($nu.current-exe)" --no-config-file "($preview_script)" "($temporary)" {1}'
-  mut args = ["--ansi" "--no-multi" "--no-print-query" "--no-expect" "--no-sort" "--height=60%" "--reverse"
+  # fzf recognizes CMD through SHELL; an explicit --with-shell value bypasses
+  # its Windows command/placeholder quoting. Clear any inherited override.
+  let args = ["--ansi" "--no-multi" "--no-print-query" "--no-expect" "--no-sort" "--height=60%" "--reverse"
     "--delimiter" (char tab) "--with-nth=2.." "--accept-nth=1" "--query" $query "--prompt" $prompt
-    "--with-shell=cmd.exe /d /c" "--preview" $preview "--preview-window=right:60%,wrap" "--bind=ctrl-/:toggle-preview"]
-  if $name_only { $args = ($args | append "--nth=1") }
+    "--with-shell=" "--preview" $preview "--preview-window=right:60%,wrap" "--bind=ctrl-/:toggle-preview"]
+  let args = if $name_only { $args | append "--nth=1" } else { $args }
   let result = try {
-    $rows | ^fzf ...$args | complete
+    with-env {SHELL: cmd.exe} { $rows | ^fzf ...$args | complete }
   } catch {|error|
     rm --force --permanent $temporary
     error make {msg: $error.msg}
