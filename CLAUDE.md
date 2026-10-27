@@ -14,7 +14,7 @@ and intentional target drift.
    For a new target, verify it is absent or preserve its existing contents before
    adding the source; chezmoi reports unmanaged targets as `not managed`.
 3. Edit only the sources. Run focused application validation, review each target
-   diff, and commit the task changes before requesting rebase and merge approval.
+   diff, and commit the task changes before requesting local merge approval.
 4. After every approved merge, apply every affected managed file from the merged
    source checkout: `chezmoi --source <absolute-merged-checkout> apply --
    <absolute-target>`, separately for each file. Merge approval authorizes this
@@ -30,8 +30,10 @@ and intentional target drift.
 
 Use one absolute file target per command. Never run `chezmoi apply --force`, a
 broad apply, or an apply with directory/glob targets. Repository synchronization
-requires an explicit request and does not authorize a broad apply. Push requires
-a separate request.
+requires an explicit request and does not authorize a broad apply. An approved
+merge into `main` also authorizes pushing `main` to its configured remote, as
+specified in the global Git workflow. Pushes to other branches require a separate
+explicit request.
 
 If the configured diff command or pager is unavailable, use
 `chezmoi --source <absolute-task-checkout> --use-builtin-diff --no-pager diff --

@@ -1,24 +1,28 @@
 # Windows dotfiles
 
 Windows-native configuration managed by
-[chezmoi](https://www.chezmoi.io/). The sibling `dotfiles-linux` repository is
+[chezmoi](https://www.chezmoi.io/). The Linux dotfiles repository is
 a reference only; paths, shell commands, credentials, and terminal behavior
 remain Windows-specific here.
 
 ## Safe workflow
 
-Edit the source repository, inspect one exact target, validate it, and apply
-only that target:
+Use the task checkout selected by the agent Git workflow. Edit its sources,
+inspect one exact target, and validate it. After merge approval, apply from the
+merged source checkout; an explicit deployment request also permits the task
+checkout. For example, from the authorized checkout:
 
 ```powershell
-chezmoi diff -- "$HOME\AppData\Roaming\nushell\config.nu"
+$sourceCheckout = (Get-Location).Path
+chezmoi --source $sourceCheckout diff -- "$env:APPDATA\nushell\config.nu"
 nu --no-config-file -c "nu-check .\AppData\Roaming\nushell\config.nu"
-chezmoi apply -- "$HOME\AppData\Roaming\nushell\config.nu"
+chezmoi --source $sourceCheckout apply -- "$env:APPDATA\nushell\config.nu"
 nu --login -c "exit"
+chezmoi --source $sourceCheckout diff -- "$env:APPDATA\nushell\config.nu"
 ```
 
-Never use `chezmoi apply --force`, and do not run a broad apply when
-`chezmoi status` reports target drift.
+Never use `chezmoi apply --force`, a broad apply, or directory/glob targets.
+Preserve and report unrelated target drift.
 
 Common source-to-target mappings:
 
@@ -34,12 +38,21 @@ Common source-to-target mappings:
 
 ## Agent guidance
 
-The instruction strategy from `dotfiles-linux` is adapted for native Windows:
+The shared Linux workflow is adapted for native Windows:
 task worktrees from `main`, `develop`, and `feature/*`; focused checks and local
-commits before review; one approval for rebase and fast-forward merge; deployment
-of each affected target after that approval; and safe worktree/branch cleanup.
+commits before review; one approval for rebase and fast-forward merge with a
+squash fallback; deployment of each affected target after that approval; and
+safe worktree/branch cleanup. After a squash, preserve and report a task branch
+if safe deletion refuses it.
 An explicit deployment request also authorizes exact-target apply from a task
-checkout. Push still requires a separate request.
+checkout. An approved merge into `main` also authorizes pushing `main` to its
+configured remote after required deployment and verification. Pushes to other
+branches require a separate explicit request.
+
+Ordinary next-step questions stay focused on the session goal and project-local
+work (`work-tracker list --here` when available). Only "what to do next today"
+authorizes an unscoped task listing. Optional skills fall back to existing
+project task notes.
 
 | Source | Target |
 | --- | --- |
@@ -58,13 +71,15 @@ hidden background helpers, and Nushell's actual default configuration directory.
 Nushell imports must select an existing file or `null` at parse time.
 
 Validate instruction changes by rendering the four exact targets with
-`chezmoi cat -- <absolute-target>`, comparing the shared copies, and inspecting
-`chezmoi managed --path-style absolute`. Apply each file separately and verify
+`chezmoi --source <absolute-task-checkout> cat -- <absolute-target>`, comparing
+the shared copies, and inspecting `chezmoi --source <absolute-task-checkout>
+managed --path-style absolute`. Apply each file separately and verify
 its exact-target diff is empty. Start a new Codex session after updating global
 guidance so its instruction chain is rebuilt. A customized `CODEX_HOME` uses
 that directory for global instructions instead of `%USERPROFILE%\.codex`.
 If a configured diff command or pager needs an unavailable executable (such as
-POSIX `cat`), use `chezmoi --use-builtin-diff --no-pager diff -- <absolute-target>`.
+POSIX `cat`), use `chezmoi --source <absolute-checkout> --use-builtin-diff
+--no-pager diff -- <absolute-target>`.
 
 ## Herdr
 

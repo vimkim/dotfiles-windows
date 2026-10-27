@@ -10,6 +10,17 @@
   Otherwise, keep concise task notes with progress, blockers, and next steps in
   the repository's established location; do not require an unavailable skill.
 
+## Next-step requests
+
+- For questions such as "what to do next," review the session goal and progress
+  first. Suggest the next unfinished step within that goal. If the goal is
+  complete, say "We're done," then run `work-tracker list --here` from the
+  session's project directory when available and report remaining local work.
+  Otherwise, use the project's established task notes.
+- Run `work-tracker list` without `--here` only when the user asks "what to do
+  next today." This includes filtered or JSON forms and applies even when a
+  skill suggests an unscoped listing.
+
 ## Windows environment
 
 This is native Windows. Use PowerShell or Nushell and Windows-native tools.
@@ -53,36 +64,44 @@ into another shell's deletion or move commands.
    ignore only disposable outputs with narrow `.gitignore` rules. Report the
    checkout, branch, commit, checks, limitations, and unrelated dirt.
 4. Request one approval to rebase onto the current local destination branch and
-   fast-forward merge locally, unless that integration is already explicitly
-   authorized. Push requires a separate explicit request. Deployment requires
-   an explicit request unless repository guidance already authorizes it as part
-   of merge approval.
+   merge locally, with squash as a fallback, unless that integration is already
+   explicitly authorized. Deployment requires an explicit request unless
+   repository guidance already authorizes it as part of merge approval.
 5. After approval, verify the destination checkout is clean and on the expected
    branch. Rebase the task branch, resolve conflicts, inspect the diff, and run
    proportionate checks. Ask again only when uncertain about the result or a
    failure's impact; report understood failures. Merge with
    `git merge --ff-only <rebased-task-commit>`. If the destination advances,
    repeat under the same approval.
-6. After every successful rebase and fast-forward merge, complete repository
-   post-merge steps (including deployment), then clean up: verify the task tip
-   is included in the destination and preserve valuable uncommitted or ignored
-   files. From outside the merged linked task worktree, run
+6. If rebase and fast-forward are impractical, abort any active rebase and run
+   `git merge --squash <task-branch>` in the clean destination checkout on the
+   expected branch. Resolve conflicts, inspect the staged diff, run
+   proportionate checks, and commit under the same approval.
+7. After every merge, complete repository post-merge steps (including authorized
+   deployment). Verify the destination includes the task tip or the squash
+   commit preserves all task changes. If the merge destination is `main`, run
+   `git push <remote> main` using its configured remote; merge approval authorizes
+   this push. Pushes to other branches require a separate explicit request.
+   Preserve valuable uncommitted or ignored files. From outside any merged
+   linked task worktree, run
    `git worktree remove <absolute-task-worktree>`, then safely delete the task
    branch with `git branch -d <task-branch>`. Close task-owned processes or shells
    holding Windows file handles if needed; report an obstacle rather than
-   forcing removal. Clean up only this task's worktree and branch, without
-   force. Finish with a clean destination checkout. Remote branch deletion
-   requires an explicit request.
+   forcing removal. A squash may leave the task branch ineligible for safe
+   deletion; preserve and report it if `git branch -d` refuses. Clean up only
+   this task's worktree and branch, without force. Finish with a clean
+   destination checkout. Remote branch deletion requires an explicit request.
 
 Grilling sessions or errors may leave work uncommitted; report the remaining
 changes and next step.
 
 ## Task context
 
-- Daily or weekly planning: use `daily-schedule` and `work-tracker` when
+- Explicit daily or weekly planning: use `daily-schedule` and `work-tracker` when
   available. Use an existing Windows schedule directory, such as
   `%USERPROFILE%\temp\todays-schedule` if present; resolve its actual location
-  instead of assuming the Linux server's directory.
+  instead of assuming the Linux server's directory. Ordinary next-step questions
+  follow the session rule above.
 - CUBRID tasks: if `%USERPROFILE%\my-cubrid\CUBRID.md` exists, read it first;
   its personal policies override conflicting repository guidance. If the
   Windows checkout uses another location, resolve that location instead of
