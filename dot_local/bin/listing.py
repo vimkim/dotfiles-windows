@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Sorted eza presets with terminal-aware paging; selected by Windows command wrappers."""
+"""Eza listings with terminal-aware paging or a 70%-screen Windows preview."""
 
 import argparse
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import subprocess
 import sys
+import unicodedata
 
 
 # Options, descending by default, description.
@@ -19,7 +21,187 @@ PRESETS = {
     "ls-tree": (["--sort=name", "--tree", "--level=2"], False, "tree, two levels deep"),
     "ls-dirs": (["--sort=name", "--only-dirs"], False, "directories only, names A–Z"),
     "ls-files": (["--sort=name", "--only-files"], False, "files only, names A–Z"),
+    "ls-one-page": (["--sort=modified"], True, "70% of the screen, most recently modified first"),
+    "ls-full": (["--sort=modified"], True, "all entries, most recently modified first"),
 }
+PRESETS["lsf"] = PRESETS["ls-full"]
+
+PREVIEW_COMMANDS = {"ls-one-page", "ls-full", "lsf"}
+# Ignore ANSI colors and OSC hyperlinks when measuring terminal cells.
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+
+
+def display_width(line, columns=None):
+    cells = 0
+    for character in ANSI_ESCAPE.sub("", line.rstrip("\r\n")):
+        if character == "\t":
+            cells += 8 - cells % 8
+        elif not unicodedata.combining(character) and unicodedata.category(character) != "Cf":
+            width = 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
+            # A wide character wraps before the last column when only one cell remains.
+            if columns and width == 2 and cells % columns == columns - 1:
+                cells += 1
+            cells += width
+    return cells
+
+
+def screen_rows(line, columns):
+    return max(1, (display_width(line, columns) + columns - 1) // columns)
+
+
+def entry_rows(arguments):
+    """Only call output rows entries for the ordinary single-path detailed view."""
+    paths = 0
+    skip_value = None
+    other_layouts = {
+        "-G", "--grid", "-x", "--across", "-1", "--oneline", "-C", "-m", "--format",
+        "-T", "--tree", "-R", "--recurse", "--recursive", "-h", "--header",
+        "-@", "--extended", "--stdin", "--code", "--loc", "--dired", "-i", "--inode",
+    }
+    for index, argument in enumerate(arguments):
+        if "\n" in argument:
+            return False
+        if skip_value and not argument.startswith("-"):
+            if skip_value != "--color-scale":
+                skip_value = None
+            continue
+        skip_value = None
+        option = argument.split("=", 1)[0]
+        if option in other_layouts:
+            return False
+        if argument == "--":
+            return paths + len(arguments[index + 1:]) <= 1
+        if argument in VALUE_OPTIONS or argument in OPTIONAL_VALUE_OPTIONS:
+            skip_value = argument
+        elif not argument.startswith("-") or argument == "-":
+            paths += 1
+    return paths <= 1
+
+
+def skipped_notice(count, entries):
+    unit = ("entry" if count == 1 else "entries") if entries else ("line" if count == 1 else "lines")
+    return f"... {count} {unit} skipped. Run ls-full or lsf to view all."
+
+
+GRID_GAP = 4
+
+
+def fit_grid(cells, columns, available):
+    """Fit the largest newest-first prefix, reading down columns like eza."""
+    count = 0
+    height = 0
+    for text, _ in cells:
+        rows = screen_rows(text, columns)
+        if height + rows > available:
+            break
+        height += rows
+        count += 1
+    best = (count, height, None)
+    # At a fixed height, each column's width only grows as entries are added.
+    for rows in range(1, available + 1):
+        widths = []
+        width = 0
+        selected = 0
+        for index, (_, cell_width) in enumerate(cells):
+            column = index // rows
+            old_width = widths[column] if column < len(widths) else 0
+            extra = max(0, cell_width - old_width)
+            if column == len(widths) and column:
+                extra += GRID_GAP
+            if width + extra > columns:
+                break
+            if column == len(widths):
+                widths.append(cell_width)
+            else:
+                widths[column] = max(old_width, cell_width)
+            width += extra
+            selected += 1
+        if selected > best[0] or (selected == best[0] and rows < best[1]):
+            best = (selected, rows, widths)
+    count, rows, widths = best
+    if widths is None:
+        return count, [text for text, _ in cells[:count]]
+    lines = []
+    for row in range(min(rows, count)):
+        parts = []
+        for column, width in enumerate(widths):
+            index = column * rows + row
+            if index >= count:
+                break
+            text, cell_width = cells[index]
+            parts.append(text)
+            if index + rows < count:
+                parts.append(" " * (width - cell_width + GRID_GAP))
+        lines.append("".join(parts))
+    return count, lines
+
+
+def print_grid_page(command, size):
+    available = size.lines * 7 // 10
+    # Even one-character names cannot fit more than this many cells on screen.
+    limit = available * max(1, (size.columns + GRID_GAP) // (GRID_GAP + 1))
+    cells = []
+    total = 0
+    with subprocess.Popen(command, stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace") as listing:
+        for line in listing.stdout:
+            total += 1
+            if len(cells) < limit:
+                text = line.rstrip("\r\n")
+                cells.append((text, display_width(text)))
+        listing.stdout.close()
+        status = listing.wait()
+    budget = available
+    while True:
+        shown, lines = fit_grid(cells, size.columns, budget)
+        skipped = total - shown
+        notice = skipped_notice(skipped, True) if skipped else None
+        remaining = max(0, available - screen_rows(notice, size.columns)) if notice else available
+        if remaining >= budget:
+            break
+        budget = remaining
+    for line in lines:
+        print(line)
+    if notice:
+        print(notice)
+    return exit_status(status)
+
+
+def print_one_page(command, size, count_entries):
+    # Keep the listing and any overflow notice within 70% of the terminal height.
+    available = size.lines * 7 // 10
+    rows = 0
+    lines = []
+    skipped = False
+    skipped_count = 0
+    with subprocess.Popen(command, stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace") as listing:
+        for line in listing.stdout:
+            count = 1
+            if skipped:
+                skipped_count += count
+                continue
+            height = screen_rows(line, size.columns)
+            if rows + height <= available:
+                lines.append((line, height, count))
+                rows += height
+            else:
+                skipped = True
+                skipped_count += count
+            # Drain the rest without buffering, preserving real listing errors.
+        listing.stdout.close()
+        status = listing.wait()
+    if skipped:
+        notice = skipped_notice(skipped_count, count_entries)
+        while lines and rows + screen_rows(notice, size.columns) > available:
+            _, height, count = lines.pop()
+            rows -= height
+            skipped_count += count
+            notice = skipped_notice(skipped_count, count_entries)
+    for line, _, _ in lines:
+        sys.stdout.write(line)
+    if skipped and skipped_count:
+        print(notice)
+    return exit_status(status)
+
 
 VALUE_OPTIONS = {
     "-s", "--sort", "-L", "--level", "-I", "--ignore-glob", "-w", "--width",
@@ -89,6 +271,7 @@ def exit_status(code):
 
 def main():
     name = sys.argv.pop(1) if len(sys.argv) > 1 else "ls-by-name"
+    preview = name in PREVIEW_COMMANDS
     options, descending, description = PRESETS[name]
     parser = argparse.ArgumentParser(
         prog=name,
@@ -98,7 +281,8 @@ def main():
         description=f"{description}; detailed listing including hidden entries.",
         epilog="Other arguments go to eza. Use -- before paths beginning with '-'.",
     )
-    parser.add_argument("--no-pager", action="store_true", help="print directly, even in a terminal")
+    parser.add_argument("--no-pager", action="store_true",
+                        help="print all entries directly, even in a terminal")
     parser.add_argument("-r", "--reverse", action="store_true", help="reverse this helper's default order")
     parser.add_argument("--help", "-?", action="store_true", help="show helper and eza help")
     args, forwarded = parser.parse_known_args(expand_short_options(sys.argv[1:]))
@@ -115,20 +299,41 @@ def main():
 
     less = shutil.which("less")
     page = (
-        not args.no_pager
+        not preview
+        and not args.no_pager
         and sys.stdin.isatty()
         and sys.stdout.isatty()
         and os.environ.get("TERM") != "dumb"
         and less is not None
     )
+    try:
+        size = os.get_terminal_size(sys.stdout.fileno())
+    except OSError:
+        size = shutil.get_terminal_size()
+    # Zero dimensions occur in newly created PTYs.
+    size = os.terminal_size((size.columns or 80, size.lines or 24))
     command = [eza, "--long", "--all", *options]
     if descending != args.reverse:
         command.append("--reverse")
+    if preview:
+        command.extend(["--no-user", "--no-permissions", "--git", "--classify=always",
+                        "--time-style=relative", "--icons=auto"])
     if page:
         # eza's output is a pipe here, but the listing is still for a terminal.
         color = "never" if "NO_COLOR" in os.environ else "always"
-        command.extend([f"--color={color}", f"--width={shutil.get_terminal_size().columns}"])
+        command.extend([f"--color={color}", f"--width={size.columns}"])
+    elif preview and sys.stdout.isatty():
+        color = "never" if "NO_COLOR" in os.environ else "always"
+        command.extend([f"--color={color}", "--icons=always", f"--width={size.columns}"])
+    ordinary_view = entry_rows(forwarded)
+    terminal_grid = preview and sys.stdout.isatty() and ordinary_view
+    if terminal_grid and (name != "ls-one-page" or args.no_pager):
+        command.append("--grid")
     command.extend(default_directory(forwarded))
+    if name == "ls-one-page" and not args.no_pager and sys.stdout.isatty():
+        if terminal_grid:
+            return print_grid_page(command, size)
+        return print_one_page(command, size, ordinary_view)
     if not page:
         # Preserve the real stdout descriptor, including pipes from any shell.
         return exit_status(subprocess.call(command))

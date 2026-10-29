@@ -153,7 +153,9 @@ and editor unchanged.
 | `cx QUERY` | Recursively pick a directory in the current tree. |
 | `vc QUERY` | Pick and edit a file; searches one level by default. |
 | `cf QUERY` | Recursively pick a file, then navigate to its containing directory. |
-| `l`, `ll`, `ezam` | Detailed newest-first listing, automatically paged in a terminal when needed. |
+| `l`, `sl`, `ls-one-page` | Detailed newest-first grid, including hidden entries, within 70% of the terminal height. |
+| `ls-full`, `lsf` | Complete newest-first listing, using a grid in terminals, without a pager or height limit. |
+| `ll`, `ezam` | Detailed newest-first listing, automatically paged in a terminal when needed. |
 | `ls-by-name`, `ls-by-size`, `ls-by-time`, `ls-by-extension` | Sorted detailed listings, including hidden entries. `-r` reverses each preset; `--no-pager` prints directly. |
 | `ls-tree`, `ls-dirs`, `ls-files` | Two-level tree, directory-only, and file-only listing presets. |
 | `ji`, `n`, `jj`, `nn`, `jc` | Pick a Just recipe and paste `just <recipe>` onto Nu's editable prompt. `ji`/`n` with arguments execute Just directly. |
@@ -167,6 +169,15 @@ In Nu, `cl --query NAME`, `vc --max-depth 3`, and
 `cf --no-ignore --no-hidden` customize pickers. PowerShell uses `-Query`,
 `-MaxDepth`, `-NoIgnore`, and `-NoHidden`. `vc` uses the configured `EDITOR`.
 File previews use bat when available, with a bounded plain-text fallback.
+
+The listing preview uses eza and Python 3. The new standalone wrappers and Nu's
+`l` prefer the Windows `py` launcher, avoiding the Microsoft Store `python` alias.
+In a terminal, `l` arranges entries down columns, accounting for wrapped names,
+Unicode, colors, and links. An overflow notice reports the exact number of
+skipped entries and points to `ls-full` / `lsf`. Files and directories share one
+modification-time order. Pipes, redirection, and `l --no-pager` receive every
+entry. Paths and eza options are accepted by all three commands. Nu falls back
+to eza or its built-in listing when the Python helper is unavailable.
 
 Project search defaults to depth 3 and skips hidden/ignored directories.
 `find-project --depth 5 QUERY` searches deeper. Set `FIND_PROJECT_ROOTS` to a

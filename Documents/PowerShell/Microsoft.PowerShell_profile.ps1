@@ -124,7 +124,7 @@ function Get-CommandInfo {
 }
 Set-Alias -Name which -Value Get-CommandInfo
 
-function Invoke-List {
+function Invoke-DetailedList {
     if ((Get-Command ls-by-time -ErrorAction SilentlyContinue) -and
         (Get-Command python -ErrorAction SilentlyContinue) -and
         (Get-Command eza -ErrorAction SilentlyContinue)) {
@@ -135,9 +135,20 @@ function Invoke-List {
         Get-ChildItem -Force @args
     }
 }
+
+function Invoke-List {
+    if ((Get-Command ls-one-page -ErrorAction SilentlyContinue) -and
+        ((Get-Command py -ErrorAction SilentlyContinue) -or
+         (Get-Command python -ErrorAction SilentlyContinue)) -and
+        (Get-Command eza -ErrorAction SilentlyContinue)) {
+        ls-one-page @args
+    } else {
+        Invoke-DetailedList @args
+    }
+}
 Set-Alias -Name l -Value Invoke-List
 function ll {
-    Invoke-List @args
+    Invoke-DetailedList @args
 }
 
 function cl {

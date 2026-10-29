@@ -29,8 +29,12 @@ def _helper_paste [command: string] {
 
 def --wrapped l [...args: string] {
   let helper = ($helper_bin | path join "listing.py")
-  if (which eza | is-not-empty) and (which python | is-not-empty) and ($helper | path exists) {
-    ^python -X utf8 $helper ls-by-time --no-user --no-permissions --icons=auto ...$args
+  let python = (which python --all | where {|cmd| not ($cmd.path | str contains '\Microsoft\WindowsApps\') })
+  if (which eza | is-not-empty) and ($helper | path exists) and (which py | is-not-empty) {
+    ^py -3 -X utf8 $helper ls-one-page ...$args
+  } else if (which eza | is-not-empty) and ($helper | path exists) and ($python | is-not-empty) {
+    let executable = ($python | first | get path)
+    ^$executable -X utf8 $helper ls-one-page ...$args
   } else if (which eza | is-not-empty) {
     ^eza --all --long --sort=modified --reverse --icons=auto ...$args
   } else { ls ...$args }
