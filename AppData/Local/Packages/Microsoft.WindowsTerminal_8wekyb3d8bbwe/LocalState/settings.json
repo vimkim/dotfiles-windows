@@ -37,7 +37,7 @@
             "id": "User.newTab.Nushell"
         }
     ],
-    "alwaysShowTabs": false,
+    "alwaysShowTabs": true,
     "centerOnLaunch": true,
     "copyFormatting": "none",
     "copyOnSelect": false,
@@ -73,14 +73,17 @@
     "newTabMenu": 
     [
         {
+            "icon": null,
             "profile": "{47302f9c-1ac4-566c-aa3e-8cf29889d6ab}",
             "type": "profile"
         },
         {
+            "icon": null,
             "profile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
             "type": "profile"
         },
         {
+            "icon": null,
             "profile": "{854b6d96-6669-4162-af3a-51ae4ab06379}",
             "type": "profile"
         },
@@ -92,15 +95,16 @@
     {
         "defaults": 
         {
-            "backgroundImage": "desktopWallpaper",
+            "adjustIndistinguishableColors": "never",
+            "backgroundImage": null,
             "backgroundImageOpacity": 0.07,
-            "colorScheme": "Catppuccin Frappe",
+            "colorScheme": "Catppuccin Mocha Transparent",
             "font": 
             {
                 "face": "Maple Mono NF, Elice DigitalCoding ver.H, D2CodingLigature Nerd Font Propo",
-                "weight": "bold"
+                "weight": "medium"
             },
-            "intenseTextStyle": "none",
+            "intenseTextStyle": "all",
             "padding": "4"
         },
         "list": 
@@ -284,7 +288,8 @@
             "yellow": "#F9E2AF"
         }
     ],
-    "showTabsInTitlebar": false,
+    "showTabsFullscreen": false,
+    "showTabsInTitlebar": true,
     "showTerminalTitleInTitlebar": false,
     "tabWidthMode": "titleLength",
     "themes": 
