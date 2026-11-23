@@ -1,0 +1,23 @@
+{{/* chezmoi:modify-template */}}
+{{- $raw := .chezmoi.stdin -}}
+{{- $existing := dict -}}
+{{- if ne (trim $raw) "" -}}
+{{-   $decoded := fromJson (trimPrefix "\ufeff" $raw) -}}
+{{-   if not (kindIs "map" $decoded) -}}
+{{-     fail "modify_private_settings.json: expected JSON object at top level" -}}
+{{-   end -}}
+{{-   $existing = $decoded -}}
+{{- end -}}
+{{- $statusCmd := joinPath .chezmoi.homeDir ".gemini" "antigravity-cli" "statusline.cmd" -}}
+{{- $shared := dict
+      "altScreenMode" "always"
+      "effort" "high"
+      "model" "Orchestrator (Neon)"
+      "statusLine" (dict "type" "command" "command" $statusCmd)
+      "toolPermission" "always-proceed" -}}
+{{- $merged := mergeOverwrite (deepCopy $existing) $shared -}}
+{{- if and (ne (trim $raw) "") (eq (toJson $existing) (toJson $merged)) -}}
+{{-   $raw -}}
+{{- else -}}
+{{-   toPrettyJson $merged }}
+{{- end -}}

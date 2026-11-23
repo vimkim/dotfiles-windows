@@ -104,6 +104,9 @@
       "Bash(cubrid-jira-search *)",
       "Bash(check-prereqs.sh*)",
       "Bash(validate-env.sh*)"
-    ]
-  }
+    ],
+    "defaultMode": "auto"
+  },
+  "promptSuggestionEnabled": false,
+  "skipAutoPermissionPrompt": true
 }

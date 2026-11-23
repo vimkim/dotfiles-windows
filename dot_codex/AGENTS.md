@@ -10,6 +10,16 @@
   Otherwise, keep concise task notes with progress, blockers, and next steps in
   the repository's established location; do not require an unavailable skill.
 
+## Herdr
+
+- When reporting a Herdr location, include the workspace name, tab name, and
+  full target ID, for example `CBRD-28035, tab sa-rollback-issue (w2GX:t2),
+  pane w2GX:p2`. Read the names and IDs from the live API.
+- For direct `codex`, `claude`, and `agy` launches through Herdr, default to
+  bypass mode unless the user requests another mode. Verify the running agent's
+  permission mode before submitting work, including after shell alias launches
+  and session restores.
+
 ## Next-step requests
 
 - For questions such as "what to do next," review the session goal and progress

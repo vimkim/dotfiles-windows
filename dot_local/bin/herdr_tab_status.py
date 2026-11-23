@@ -3,11 +3,14 @@
 """Decorate Herdr tabs and publish a per-workspace agent inventory."""
 
 import argparse
-import msvcrt
+import ctypes
+from ctypes import wintypes
 import hashlib
 import json
 import math
+import msvcrt
 import os
+from pathlib import Path
 import signal
 import subprocess
 import sys
@@ -16,7 +19,8 @@ import threading
 import time
 import unicodedata
 from collections import defaultdict
-from pathlib import Path
+
+from herdr_api import HerdrError, PipeStream, request
 
 SOURCE = "user:tab-status"
 MARKERS = {"working": "▶", "blocked": "!", "done": "✓", "idle": "○", "unknown": "?"}
@@ -25,9 +29,202 @@ ROW_WIDTH = 44
 TOKEN_NAMES = ["tab_inventory", *[f"tab_states_{i}" for i in range(1, STATUS_ROWS + 1)]]
 TTL_MS = 60_000
 HEARTBEAT_SECONDS = 20
+SUBSCRIPTIONS = (
+    "workspace.created",
+    "workspace.closed",
+    "tab.created",
+    "tab.closed",
+    "tab.moved",
+    "tab.renamed",
+    "tab.focused",
+    "pane.created",
+    "pane.closed",
+    "pane.moved",
+    "pane.exited",
+    "pane.focused",
+    "pane.agent_detected",
+    "pane.updated",
+)
+PANE_STATE_FIELDS = ("workspace_id", "tab_id", "agent", "agent_status")
+
+_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_create_event = _kernel32.CreateEventW
+_create_event.argtypes = (wintypes.LPVOID, wintypes.BOOL, wintypes.BOOL, wintypes.LPCWSTR)
+_create_event.restype = wintypes.HANDLE
+_open_event = _kernel32.OpenEventW
+_open_event.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.LPCWSTR)
+_open_event.restype = wintypes.HANDLE
+_set_event = _kernel32.SetEvent
+_set_event.argtypes = (wintypes.HANDLE,)
+_set_event.restype = wintypes.BOOL
+_reset_event = _kernel32.ResetEvent
+_reset_event.argtypes = (wintypes.HANDLE,)
+_reset_event.restype = wintypes.BOOL
+_close_handle = _kernel32.CloseHandle
+_close_handle.argtypes = (wintypes.HANDLE,)
+_close_handle.restype = wintypes.BOOL
+_wait_multiple = _kernel32.WaitForMultipleObjects
+_wait_multiple.argtypes = (wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE), wintypes.BOOL, wintypes.DWORD)
+_wait_multiple.restype = wintypes.DWORD
+
+_EVENT_MODIFY_STATE = 0x0002
+_INFINITE = 0xFFFFFFFF
+_WAIT_OBJECT_0 = 0x00000000
 
 
-from herdr_api import HerdrError, request
+def stop_event_name(key):
+    return f"Local\\herdr-tab-status-stop-{key}"
+
+
+def signal_stop_event(key):
+    handle = _open_event(_EVENT_MODIFY_STATE, False, stop_event_name(key))
+    if handle:
+        try:
+            _set_event(handle)
+        finally:
+            _close_handle(handle)
+
+
+class WorkerControl:
+    """Wake the main thread for Herdr events, stop requests, or signals."""
+
+    def __init__(self, key, stop_path):
+        self.stop_path = stop_path
+        self.stopped = threading.Event()
+        self.wake_handle = _create_event(None, True, False, None)
+        if not self.wake_handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        self.stop_handle = _create_event(None, True, False, stop_event_name(key))
+        if not self.stop_handle:
+            error = ctypes.get_last_error()
+            _close_handle(self.wake_handle)
+            raise ctypes.WinError(error)
+        _reset_event(self.stop_handle)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type, _exc_value, _traceback):
+        _close_handle(self.wake_handle)
+        _close_handle(self.stop_handle)
+
+    def set(self):
+        _set_event(self.wake_handle)
+
+    def clear(self):
+        _reset_event(self.wake_handle)
+
+    def stop(self):
+        self.stopped.set()
+        _set_event(self.stop_handle)
+        _set_event(self.wake_handle)
+
+    def stopping(self):
+        if self.stop_path.exists():
+            self.stopped.set()
+        return self.stopped.is_set()
+
+    def wait(self, timeout=None):
+        if self.stopping():
+            return
+        handles = (wintypes.HANDLE * 2)(self.wake_handle, self.stop_handle)
+        ms = _INFINITE if timeout is None else max(0, int(math.ceil(timeout * 1000)))
+        result = _wait_multiple(2, handles, False, ms)
+        if result == _WAIT_OBJECT_0 + 1 or self.stop_path.exists():
+            self.stopped.set()
+
+
+class EventFeed:
+    """Drain notifications during API calls; events only invalidate snapshots."""
+
+    def __init__(self, updater, wake, pane_ids=()):
+        self.updater = updater
+        self.wake = wake
+        self.revision = 0
+        self.error = None
+        self.panes = {}
+        self.pane_ids = frozenset(pane_ids)
+        self.lock = threading.Lock()
+        self.stream = None
+        self.thread = None
+
+    def __enter__(self):
+        try:
+            self.stream = PipeStream(self.updater.socket_path, timeout=3)
+            subscriptions = [{"type": kind} for kind in SUBSCRIPTIONS]
+            subscriptions.extend(
+                {"type": "pane.agent_status_changed", "pane_id": pane_id}
+                for pane_id in sorted(self.pane_ids)
+            )
+            payload = {
+                "id": "tab-status-events",
+                "method": "events.subscribe",
+                "params": {"subscriptions": subscriptions},
+            }
+            self.stream.send_json(payload, label="events.subscribe")
+            response = self.read(timeout=3)
+            if (
+                response.get("id") != "tab-status-events"
+                or response.get("result", {}).get("type") != "subscription_started"
+            ):
+                raise HerdrError("event subscription was not acknowledged")
+            self.thread = threading.Thread(target=self.receive, daemon=True)
+            self.thread.start()
+            return self
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
+
+    def __exit__(self, _exc_type, _exc_value, _traceback):
+        if self.stream is not None:
+            self.stream.close()
+        if self.thread is not None:
+            self.thread.join(timeout=4)
+
+    def read(self, timeout=None):
+        line = self.stream.read_line(timeout=timeout, label="events.subscribe")
+        message = json.loads(line)
+        if not isinstance(message, dict):
+            raise HerdrError("invalid event subscription response")
+        if "error" in message:
+            error = message["error"]
+            raise HerdrError(
+                f"event subscription: {error.get('code', 'error')}: "
+                f"{error.get('message', 'Herdr API error')}"
+            )
+        return message
+
+    def observe(self, snapshot):
+        with self.lock:
+            self.panes = {
+                pane["pane_id"]: tuple(pane.get(key) for key in PANE_STATE_FIELDS)
+                for pane in snapshot.get("panes", [])
+            }
+
+    def receive(self):
+        try:
+            while True:
+                message = self.read(timeout=None)
+                kind, data = message.get("event"), message.get("data", {})
+                if not isinstance(kind, str) or not isinstance(data, dict):
+                    raise HerdrError("invalid event envelope")
+                if kind == "tab_renamed":
+                    record = self.updater.tabs.get(data.get("tab_id"))
+                    if record and data.get("label") in record["labels"]:
+                        continue
+                with self.lock:
+                    if kind == "pane_updated":
+                        pane = data["pane"]
+                        if not isinstance(pane, dict):
+                            raise HerdrError("invalid pane update event")
+                        state = tuple(pane.get(key) for key in PANE_STATE_FIELDS)
+                        if self.panes.get(pane["pane_id"]) == state:
+                            continue
+                    self.revision += 1
+                self.wake.set()
+        except (OSError, ValueError, KeyError, HerdrError) as error:
+            self.error = error
+            self.wake.set()
 
 
 def display_width(value):
@@ -59,7 +256,12 @@ def original_label(label, record):
             return record["base"], True
         for suffix in record["suffixes"]:
             if label.endswith(suffix):
-                return label[: -len(suffix)], True
+                base = label[: -len(suffix)]
+                for prefix in record.get("prefixes", []):
+                    if base.startswith(prefix):
+                        base = base[len(prefix) :]
+                        break
+                return base, True
     return label, False
 
 
@@ -90,6 +292,9 @@ def build_plan(snapshot, saved_tabs, now=None):
     tabs_by_workspace = defaultdict(list)
     tabs = []
     for tab in snapshot["tabs"]:
+        # Snapshot array order follows the native tab bar. API `number` is the
+        # stable creation number and can have gaps or change order after moves.
+        position = len(tabs_by_workspace[tab["workspace_id"]]) + 1
         agents = agents_by_tab[tab["tab_id"]]
         state = (
             (tab["agent_status"] if tab["agent_status"] in MARKERS else "unknown")
@@ -112,30 +317,38 @@ def build_plan(snapshot, saved_tabs, now=None):
         duration = format_duration(now - state_since) if agents else ""
         age = f" {duration}" if duration else ""
         base, owned = original_label(tab["label"], record)
-        suffix = f" [{marker} {name}{age}]"
+        prefix = f"{position} "
+        # Bare numeric names are Herdr's generated defaults. Keep the original
+        # for restoration, but display only the current shortcut position.
+        title = (
+            str(position)
+            if base.isascii() and base.isdecimal()
+            else prefix + base
+        )
+        suffix = f" [{tab['tab_id'].rsplit(':', 1)[-1]} {marker} {name}{age}]"
         item = {
             "tab_id": tab["tab_id"],
             "base": base,
-            "label": base + suffix,
+            "label": title + suffix,
+            "prefix": prefix,
             "suffix": suffix,
             "current": tab["label"],
             "owned": owned,
             "number": tab["number"],
+            "position": position,
             "marker": marker,
             "state": state,
             "state_since": state_since,
             "duration": duration,
             "agent_count": len(agents),
-            "summary": f"{tab['number']} {marker} {short_name}{age}",
-            "compact_summary": f"{tab['number']}{marker}{duration}",
+            "summary": f"{position} {marker} {short_name}{age}",
+            "compact_summary": f"{position}{marker}{duration}",
         }
         tabs.append(item)
         tabs_by_workspace[tab["workspace_id"]].append(item)
     workspaces = {}
     for workspace in snapshot["workspaces"]:
-        ordered = sorted(
-            tabs_by_workspace[workspace["workspace_id"]], key=lambda tab: tab["number"]
-        )
+        ordered = tabs_by_workspace[workspace["workspace_id"]]
         rows = pack_rows([tab["summary"] for tab in ordered], " · ")
         if len(rows) > STATUS_ROWS:
             rows = pack_rows([tab["compact_summary"] for tab in ordered], " ")
@@ -154,7 +367,11 @@ def build_plan(snapshot, saved_tabs, now=None):
         for index, row in enumerate(rows, 1):
             tokens[f"tab_states_{index}"] = row
         workspaces[workspace["workspace_id"]] = tokens
-    return {"tabs": tabs, "workspaces": workspaces}
+    panes = {
+        pane["pane_id"]: {"pane_id": pane["pane_id"]}
+        for pane in snapshot.get("panes", [])
+    }
+    return {"tabs": tabs, "workspaces": workspaces, "panes": panes}
 
 
 class Updater:
@@ -178,6 +395,11 @@ class Updater:
                     or not isinstance(record.get("suffixes"), list)
                     or not all(
                         isinstance(value, str) and value for value in record["suffixes"]
+                    )
+                    or not isinstance(record.get("prefixes", []), list)
+                    or not all(
+                        isinstance(value, str) and value
+                        for value in record.get("prefixes", [])
                     )
                 ):
                     raise HerdrError(f"invalid label journal: {self.state_path}")
@@ -215,12 +437,17 @@ class Updater:
     def preview(self):
         return build_plan(self.snapshot(), self.tabs)
 
-    def update(self):
-        plan = self.preview()
+    def update(self, snapshot=None):
+        # Timer updates reuse the last authoritative snapshot. Reflect successful
+        # writes in that cache so timers never re-adopt our own decorations.
+        snapshot = self.snapshot() if snapshot is None else snapshot
+        plan = build_plan(snapshot, self.tabs)
+        current_tabs = {tab["tab_id"]: tab for tab in snapshot["tabs"]}
         journal = {}
         for tab in plan["tabs"]:
             labels = [tab["label"]]
             suffixes = [tab["suffix"]]
+            prefixes = [tab["prefix"]]
             if tab["owned"]:
                 labels.append(tab["current"])
                 previous = self.tabs[tab["tab_id"]]
@@ -229,18 +456,30 @@ class Updater:
                     for suffix in previous["suffixes"]
                     if tab["current"].endswith(suffix)
                 )
+                prefixes.extend(
+                    prefix
+                    for prefix in previous.get("prefixes", [])
+                    if tab["current"].startswith(prefix)
+                )
             journal[tab["tab_id"]] = {
                 "base": tab["base"],
                 "labels": list(dict.fromkeys(labels)),
                 "suffixes": list(dict.fromkeys(suffixes)),
+                "prefixes": list(dict.fromkeys(prefixes)),
                 "state": tab["state"],
                 "state_since": tab["state_since"],
             }
         if journal != self.tabs:
             # Persist both possible labels before rename: a lost API reply must
             # not lose the original name or double-decorate after a restart.
-            self.tabs = journal
-            self.save()
+            # Keep the old journal in memory until the save succeeds, so a
+            # retry after a failed save saves again before renaming.
+            previous, self.tabs = self.tabs, journal
+            try:
+                self.save()
+            except BaseException:
+                self.tabs = previous
+                raise
         for tab in plan["tabs"]:
             if tab["label"] != tab["current"]:
                 request(
@@ -248,25 +487,30 @@ class Updater:
                     "tab.rename",
                     {"tab_id": tab["tab_id"], "label": tab["label"]},
                 )
+                current_tabs[tab["tab_id"]]["label"] = tab["label"]
         now = time.monotonic()
-        for workspace_id, tokens in plan["workspaces"].items():
-            previous, published_at = self.published.get(workspace_id, (None, 0))
-            if tokens != previous or now - published_at >= HEARTBEAT_SECONDS:
-                request(
-                    self.socket_path,
-                    "workspace.report_metadata",
-                    {
-                        "workspace_id": workspace_id,
-                        "source": SOURCE,
-                        "tokens": tokens,
-                        "ttl_ms": TTL_MS,
-                    },
-                )
-                self.published[workspace_id] = (tokens, now)
+        live_targets = set()
+        for scope in ("workspace", "pane"):
+            for target_id, tokens in plan[f"{scope}s"].items():
+                key = (scope, target_id)
+                live_targets.add(key)
+                previous, published_at = self.published.get(key, (None, 0))
+                if tokens != previous or now - published_at >= HEARTBEAT_SECONDS:
+                    request(
+                        self.socket_path,
+                        f"{scope}.report_metadata",
+                        {
+                            f"{scope}_id": target_id,
+                            "source": SOURCE,
+                            "tokens": tokens,
+                            "ttl_ms": TTL_MS,
+                        },
+                    )
+                    self.published[key] = (tokens, now)
         self.published = {
             key: value
             for key, value in self.published.items()
-            if key in plan["workspaces"]
+            if key in live_targets
         }
         return plan
 
@@ -290,6 +534,16 @@ class Updater:
                     "tokens": dict.fromkeys(TOKEN_NAMES),
                 },
             )
+        for pane in snapshot.get("panes", []):
+            request(
+                self.socket_path,
+                "pane.report_metadata",
+                {
+                    "pane_id": pane["pane_id"],
+                    "source": SOURCE,
+                    "tokens": {"pane_id": None},
+                },
+            )
         self.tabs = {}
         self.save()
 
@@ -307,7 +561,78 @@ def open_lock(directory, name="lock"):
     return descriptor
 
 
-def start_worker(socket_path, directory, interval):
+def timer_delay(updater, plan):
+    """Schedule displayed ages and metadata leases without reading Herdr."""
+    monotonic_now, wall_now = time.monotonic(), time.time()
+    delays = [
+        published_at + HEARTBEAT_SECONDS - monotonic_now
+        for _tokens, published_at in updater.published.values()
+    ]
+    delays.extend(
+        60 - max(0, wall_now - tab["state_since"]) % 60
+        for tab in plan["tabs"]
+        if tab["agent_count"]
+    )
+    return max(0.05, min(delays)) if delays else None
+
+
+def run_events(updater, control, retry_delay):
+    last_error = None
+    pane_ids = frozenset()
+    while not control.stopping():
+        try:
+            # Subscribe before the first read. The reader keeps draining while
+            # snapshots and writes run; a changed revision triggers another read.
+            with EventFeed(updater, control, pane_ids) as feed:
+                snapshot, revision, deadline = None, -1, 0
+                while not control.stopping():
+                    if feed.error:
+                        raise feed.error
+                    refresh = feed.revision != revision
+                    if refresh:
+                        revision = feed.revision
+                        snapshot = updater.snapshot()
+                        feed.observe(snapshot)
+                        pane_ids = frozenset(
+                            pane["pane_id"] for pane in snapshot.get("panes", [])
+                        )
+                        if pane_ids != feed.pane_ids:
+                            # State subscriptions require explicit pane IDs.
+                            # Resubscribe, then read again to cover the gap.
+                            break
+                        if feed.revision != revision:
+                            continue
+                    if refresh or time.monotonic() >= deadline:
+                        plan = updater.update(snapshot)
+                        delay = timer_delay(updater, plan)
+                        deadline = (
+                            time.monotonic() + delay if delay is not None else math.inf
+                        )
+                        last_error = None
+                    control.clear()
+                    if control.stopping() or feed.error or feed.revision != revision:
+                        continue
+                    timeout = (
+                        None if math.isinf(deadline)
+                        else max(0, deadline - time.monotonic())
+                    )
+                    control.wait(timeout)
+        except (OSError, ValueError, KeyError, HerdrError) as error:
+            # A pane may close between discovery and subscription acceptance.
+            # Rediscover IDs under lifecycle subscriptions on the next attempt.
+            pane_ids = frozenset()
+            message = str(error)
+            if message != last_error:
+                print(f"herdr-tab-status: {message}", file=sys.stderr, flush=True)
+                last_error = message
+            if not Path(updater.socket_path).exists():
+                break
+            control.clear()
+            if not control.stopping():
+                control.wait(retry_delay)
+
+
+def start_worker(socket_path, directory, retry_delay):
     # Serialize launches until the child owns the session lock. CRT descriptors
     # cannot be inherited with POSIX pass_fds on Windows.
     startup_lock = open_lock(directory, "startup.lock")
@@ -323,7 +648,7 @@ def start_worker(socket_path, directory, interval):
         with (directory / "updater.log").open("ab", buffering=0) as log:
             process = subprocess.Popen(
                 [sys.executable, "-X", "utf8", str(Path(__file__).resolve()),
-                 "run", "--interval", str(interval)],
+                 "run", "--retry-delay", str(retry_delay)],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=log,
@@ -348,14 +673,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("start", "run", "once", "preview", "stop"))
     parser.add_argument(
+        "--retry-delay",
         "--interval",
+        dest="retry_delay",
         type=float,
         default=2,
-        help="refresh interval in seconds (default: 2)",
+        help="event connection retry delay in seconds (default: 2)",
     )
     args = parser.parse_args()
-    if not math.isfinite(args.interval) or args.interval < 0.05:
-        parser.error("interval must be a finite number of at least 0.05 seconds")
+    if not math.isfinite(args.retry_delay) or args.retry_delay < 0.05:
+        parser.error("retry delay must be a finite number of at least 0.05 seconds")
     if os.environ.get("HERDR_ENV") != "1" or not os.environ.get("HERDR_SOCKET_PATH"):
         parser.error("run inside a Herdr pane with HERDR_SOCKET_PATH set")
     socket_path = str(Path(os.environ["HERDR_SOCKET_PATH"]).resolve())
@@ -372,12 +699,13 @@ def main():
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     stop_path = directory / "stop"
     if args.command == "start":
-        start_worker(socket_path, directory, args.interval)
+        start_worker(socket_path, directory, args.retry_delay)
         return
     descriptor = open_lock(directory)
     if descriptor is None:
         if args.command == "stop":
             stop_path.touch(mode=0o600)
+            signal_stop_event(key)
         else:
             raise HerdrError("an updater is already running for this session")
         return
@@ -391,35 +719,21 @@ def main():
             stop_path.unlink(missing_ok=True)
             return
         stop_path.unlink(missing_ok=True)
-        stopped = threading.Event()
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            signal.signal(signum, lambda _signum, _frame: stopped.set())
-        last_error = None
-        try:
-            while not stopped.is_set() and not stop_path.exists():
-                try:
-                    updater.update()
-                    last_error = None
-                except (OSError, ValueError, KeyError, HerdrError) as error:
-                    message = str(error)
-                    if message != last_error:
-                        print(
-                            f"herdr-tab-status: {message}", file=sys.stderr, flush=True
-                        )
-                    last_error = message
-                    if not Path(socket_path).exists():
-                        break
-                stopped.wait(args.interval)
-        finally:
+        with WorkerControl(key, stop_path) as control:
+            for signum in (signal.SIGTERM, signal.SIGINT):
+                signal.signal(signum, lambda _signum, _frame: control.stop())
             try:
-                updater.restore()
-            except (OSError, ValueError, KeyError, HerdrError) as error:
-                print(
-                    f"herdr-tab-status: restore pending: {error}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            stop_path.unlink(missing_ok=True)
+                run_events(updater, control, args.retry_delay)
+            finally:
+                try:
+                    updater.restore()
+                except (OSError, ValueError, KeyError, HerdrError) as error:
+                    print(
+                        f"herdr-tab-status: restore pending: {error}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                stop_path.unlink(missing_ok=True)
     finally:
         os.close(descriptor)
 

@@ -57,22 +57,30 @@ def fixture():
                 "agent_status": "unknown",
             },
         ],
+        "panes": [
+            {"pane_id": "w1:p1", "workspace_id": "w1", "tab_id": "w1:t1", "agent": "codex", "agent_status": "working"},
+            {"pane_id": "w1:p2", "workspace_id": "w1", "tab_id": "w1:t2", "agent": "claude", "agent_status": "blocked"},
+            {"pane_id": "w1:p3", "workspace_id": "w1", "tab_id": "w1:t3", "agent": "codex", "agent_status": "unknown"},
+            {"pane_id": "w1:p4", "workspace_id": "w1", "tab_id": "w1:t4"},
+        ],
         "agents": [
-            {"tab_id": "w1:t1", "agent": "codex", "agent_status": "working"},
-            {"tab_id": "w1:t2", "agent": "claude", "agent_status": "blocked"},
-            {"tab_id": "w1:t3", "agent": "codex", "agent_status": "unknown"},
+            {"pane_id": "w1:p1", "tab_id": "w1:t1", "agent": "codex", "agent_status": "working"},
+            {"pane_id": "w1:p2", "tab_id": "w1:t2", "agent": "claude", "agent_status": "blocked"},
+            {"pane_id": "w1:p3", "tab_id": "w1:t3", "agent": "codex", "agent_status": "unknown"},
         ],
     }
 
 
 class HerdrServer:
-    """A stateful socket fixture: rename really affects subsequent snapshots."""
+    """A stateful named-pipe fixture supporting requests and event streams."""
 
     def __init__(self, path):
         self.path = path
         self.snapshot = fixture()
         self.requests = []
         self.metadata = {}
+        self.pane_metadata = {}
+        self.subscribers = []
         self.errors = []
         self.drop_next_rename_reply = False
         self.reject_next_rename = False
@@ -81,6 +89,7 @@ class HerdrServer:
         self.lock = threading.RLock()
         self.listener = PipeListener(path)
         self.thread = threading.Thread(target=self.serve, daemon=True)
+        self.handlers = []
 
     def __enter__(self):
         self.thread.start()
@@ -88,58 +97,102 @@ class HerdrServer:
 
     def __exit__(self, _exc_type, _exc_value, _traceback):
         self.stop.set()
+        with self.lock:
+            for conn in list(self.subscribers):
+                conn.close()
+            self.subscribers.clear()
         if self.thread.is_alive():
             self.listener.wake()
         self.thread.join(timeout=2)
+        for thread in list(self.handlers):
+            thread.join(timeout=2)
         self.listener.close()
         if self.errors:
             raise self.errors[0]
+
+    def emit(self, event, data):
+        line = (json.dumps({"event": event, "data": data}) + "\n").encode("utf-8")
+        with self.lock:
+            alive = []
+            for conn in self.subscribers:
+                try:
+                    conn.write(line)
+                    conn.flush()
+                    alive.append(conn)
+                except OSError:
+                    conn.close()
+            self.subscribers = alive
 
     def serve(self):
         while not self.stop.is_set():
             try:
                 connection, _ = self.listener.accept()
-            except TimeoutError:
+            except OSError:
+                if self.stop.is_set():
+                    return
                 continue
             if self.stop.is_set():
-                connection.__exit__(None, None, None)
+                connection.close()
                 return
-            try:
-                with connection, connection.makefile("rwb") as stream:
-                    payload = json.loads(stream.readline())
-                    with self.lock:
-                        self.requests.append(payload)
-                        if (
-                            payload["method"] == "tab.rename"
-                            and self.reject_next_rename
-                        ):
-                            self.reject_next_rename = False
-                            response = {
-                                "id": payload["id"],
-                                "error": {"message": "rename rejected"},
-                            }
-                        else:
-                            response = {
-                                "id": payload["id"],
-                                "result": self.handle(
-                                    payload["method"], payload["params"]
-                                ),
-                            }
-                            if (
-                                payload["method"] == "tab.rename"
-                                and self.drop_next_rename_reply
-                            ):
-                                self.drop_next_rename_reply = False
-                                continue
-                        if self.stall_next_response:
-                            self.stall_next_response = False
-                            time.sleep(0.2)
-                            continue
-                        stream.write(json.dumps(response).encode() + b"\n")
-                        stream.flush()
-            except Exception as error:  # noqa: BLE001 - propagate fixture failures to the test thread
+            worker = threading.Thread(
+                target=self.handle_connection, args=(connection,), daemon=True
+            )
+            self.handlers.append(worker)
+            worker.start()
+
+    def handle_connection(self, connection):
+        keep_open = False
+        try:
+            line = connection.readline()
+            if not line:
+                return
+            payload = json.loads(line)
+            with self.lock:
+                self.requests.append(payload)
+                if payload["method"] == "events.subscribe":
+                    response = {
+                        "id": payload["id"],
+                        "result": {"type": "subscription_started"},
+                    }
+                    connection.write(json.dumps(response).encode() + b"\n")
+                    connection.flush()
+                    self.subscribers.append(connection)
+                    keep_open = True
+                    return
+                if (
+                    payload["method"] == "tab.rename"
+                    and self.reject_next_rename
+                ):
+                    self.reject_next_rename = False
+                    response = {
+                        "id": payload["id"],
+                        "error": {"message": "rename rejected"},
+                    }
+                else:
+                    response = {
+                        "id": payload["id"],
+                        "result": self.handle(
+                            payload["method"], payload["params"]
+                        ),
+                    }
+                    if (
+                        payload["method"] == "tab.rename"
+                        and self.drop_next_rename_reply
+                    ):
+                        self.drop_next_rename_reply = False
+                        return
+                if self.stall_next_response:
+                    self.stall_next_response = False
+                    time.sleep(0.2)
+                    return
+                connection.write(json.dumps(response).encode() + b"\n")
+                connection.flush()
+        except Exception as error:  # noqa: BLE001 - propagate fixture failures to the test thread
+            if not self.stop.is_set():
                 self.errors.append(error)
-                return
+        finally:
+            if not keep_open:
+                connection.close()
 
     def handle(self, method, params):
         if method == "ping":
@@ -151,12 +204,13 @@ class HerdrServer:
             }
         if method == "tab.rename":
             self.tab(params["tab_id"])["label"] = params["label"]
+            self.emit("tab_renamed", {"tab_id": params["tab_id"], "label": params["label"]})
             return {
                 "type": "tab_info",
                 "tab": copy.deepcopy(self.tab(params["tab_id"])),
             }
         if method == "workspace.report_metadata":
-            self.assert_metadata_params(params)
+            self.assert_metadata_params(params, "workspace_id")
             tokens = self.metadata.setdefault(
                 (params["workspace_id"], params["source"]), {}
             )
@@ -166,12 +220,23 @@ class HerdrServer:
                 else:
                     tokens[key] = value
             return {"type": "workspace_info"}
+        if method == "pane.report_metadata":
+            self.assert_metadata_params(params, "pane_id")
+            tokens = self.pane_metadata.setdefault(
+                (params["pane_id"], params["source"]), {}
+            )
+            for key, value in params["tokens"].items():
+                if value is None:
+                    tokens.pop(key, None)
+                else:
+                    tokens[key] = value
+            return {"type": "pane_info"}
         raise AssertionError(f"unexpected or focus-changing method: {method}")
 
     @staticmethod
-    def assert_metadata_params(params):
+    def assert_metadata_params(params, id_key):
         # The real API clears keys by null values; it has no clear_tokens field.
-        assert set(params) <= {"workspace_id", "source", "tokens", "ttl_ms", "seq"}
+        assert set(params) <= {id_key, "source", "tokens", "ttl_ms", "seq"}
         assert len(params["tokens"]) <= 16
         assert all(
             value is None or isinstance(value, str)
@@ -276,22 +341,27 @@ class HerdrTabStatusTest(unittest.TestCase):
         ):
             with self.subTest(elapsed=elapsed):
                 self.update_at(1000 + elapsed)
-                self.assertEqual(self.server.labels()[0], f"1 [▶ Codex {duration}]")
+                self.assertEqual(self.server.labels()[0], f"1 [t1 ▶ Codex {duration}]")
                 self.assertEqual(
-                    self.server.labels()[1], f"review [! Claude {duration}]"
+                    self.server.labels()[1], f"2 review [t2 ! Claude {duration}]"
                 )
                 self.assertIn(f"1 ▶ Codex {duration}", self.tokens()["tab_states_1"])
-                self.assertEqual(self.server.labels()[3], "logs [— shell]")
+                self.assertEqual(self.server.labels()[3], "4 logs [t4 — shell]")
+        self.assertEqual(
+            self.server.pane_metadata[("w1:p2", "user:tab-status")],
+            {"pane_id": "w1:p2"},
+        )
         self.success("stop")
         self.assertEqual(self.server.labels(), ["1", "review", "3", "logs"])
+        self.assertEqual(self.server.pane_metadata[("w1:p2", "user:tab-status")], {})
 
     def test_state_transitions_reset_only_the_changed_tab_timer(self):
         self.update_at(1000)
         with self.server.lock:
             self.server.tab("w1:t1")["agent_status"] = "blocked"
         self.update_at(1480)
-        self.assertEqual(self.server.labels()[0], "1 [! Codex <1m]")
-        self.assertEqual(self.server.labels()[1], "review [! Claude 8m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ! Codex <1m]")
+        self.assertEqual(self.server.labels()[1], "2 review [t2 ! Claude 8m]")
         for index, state in enumerate(("done", "idle", "unknown", "working"), 1):
             with self.subTest(state=state):
                 with self.server.lock:
@@ -305,11 +375,11 @@ class HerdrTabStatusTest(unittest.TestCase):
         with self.server.lock:
             agent = self.server.snapshot["agents"].pop(0)
         self.update_at(1480)
-        self.assertEqual(self.server.labels()[0], "1 [— shell]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 — shell]")
         with self.server.lock:
             self.server.snapshot["agents"].append(agent)
         self.update_at(1600)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex <1m]")
 
     def test_timer_tracks_aggregate_state_when_agent_membership_changes(self):
         self.update_at(1000)
@@ -318,34 +388,35 @@ class HerdrTabStatusTest(unittest.TestCase):
                 {"tab_id": "w1:t1", "agent": "claude", "agent_status": "working"}
             )
         self.update_at(1480)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Claude+Codex ×2 8m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Claude+Codex ×2 8m]")
         with self.server.lock:
             self.server.tab("w1:t1")["agent_status"] = "blocked"
             self.server.snapshot["agents"][-1]["agent_status"] = "blocked"
         self.update_at(1540)
-        self.assertEqual(self.server.labels()[0], "1 [! Claude+Codex ×2 <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ! Claude+Codex ×2 <1m]")
 
     def test_manual_names_and_tab_order_changes_do_not_reset_timers(self):
         self.update_at(1000)
         self.update_at(1480)
         with self.server.lock:
-            self.server.tab("w1:t1")["label"] = "renamed [▶ Codex 8m]"
-            self.server.tab("w1:t1")["number"] = 2
-            self.server.tab("w1:t2")["number"] = 1
+            self.server.tab("w1:t1")["label"] = "1 renamed [t1 ▶ Codex 8m]"
+            tabs = self.server.snapshot["tabs"]
+            tabs[0], tabs[1] = tabs[1], tabs[0]
         self.update_at(1540)
-        self.assertEqual(self.server.labels()[0], "renamed [▶ Codex 9m]")
-        self.assertTrue(self.tokens()["tab_states_1"].startswith("1 ! Claude 9m"))
+        self.assertEqual(self.server.labels()[0], "1 review [t2 ! Claude 9m]")
+        self.assertEqual(self.server.labels()[1], "2 renamed [t1 ▶ Codex 9m]")
+        self.assertTrue(self.tokens()["tab_states_1"].startswith("1 ! Claude 9m · 2 ▶ Codex 9m"))
         self.success("stop")
-        self.assertEqual(self.server.labels()[0], "renamed")
+        self.assertEqual(self.server.labels()[1], "renamed")
 
     def test_lost_age_rename_reply_preserves_original_name_and_timer(self):
         self.update_at(1000)
         self.server.drop_next_rename_reply = True
         with self.assertRaisesRegex(RuntimeError, "incomplete response"):
             self.update_at(1480)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex 8m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex 8m]")
         self.update_at(1540)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex 9m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex 9m]")
         self.success("stop")
         self.assertEqual(self.server.labels(), ["1", "review", "3", "logs"])
 
@@ -365,18 +436,18 @@ class HerdrTabStatusTest(unittest.TestCase):
         }
         (self.directory / "state.json").write_text(json.dumps(legacy))
         self.update_at(1000)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex <1m]")
         self.update_at(1480)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex 8m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex 8m]")
         self.success("stop")
         self.assertEqual(self.server.labels()[0], "1")
 
     def test_clock_moving_backwards_rebases_the_timer_without_negative_age(self):
         self.update_at(1000)
         self.update_at(900)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex <1m]")
         self.update_at(1020)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex 2m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex 2m]")
 
     def test_preview_uses_persisted_age_without_saving_new_observations(self):
         self.update_at(1000)
@@ -426,10 +497,10 @@ class HerdrTabStatusTest(unittest.TestCase):
         self.assertEqual(
             self.server.labels(),
             [
-                "1 [▶ Codex <1m]",
-                "review [! Claude <1m]",
-                "3 [? Codex <1m]",
-                "logs [— shell]",
+                "1 [t1 ▶ Codex <1m]",
+                "2 review [t2 ! Claude <1m]",
+                "3 [t3 ? Codex <1m]",
+                "4 logs [t4 — shell]",
             ],
         )
         self.assertEqual(self.tokens()["tab_inventory"], "4 tabs · 5 panes · 3 agents")
@@ -462,7 +533,7 @@ class HerdrTabStatusTest(unittest.TestCase):
             ),
             renames,
         )
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex <1m]")
 
     def test_native_done_idle_and_multi_agent_aggregate_states(self):
         self.success("once")
@@ -473,8 +544,8 @@ class HerdrTabStatusTest(unittest.TestCase):
                 {"tab_id": "w1:t1", "agent": "claude", "agent_status": "done"}
             )
         self.success("once")
-        self.assertEqual(self.server.labels()[0], "1 [✓ Claude+Codex ×2 <1m]")
-        self.assertEqual(self.server.labels()[1], "review [○ Claude <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ✓ Claude+Codex ×2 <1m]")
+        self.assertEqual(self.server.labels()[1], "2 review [t2 ○ Claude <1m]")
         self.assertEqual(self.tokens()["tab_inventory"], "4 tabs · 5 panes · 4 agents")
 
     def test_agent_exit_replaces_previous_state_with_shell(self):
@@ -482,17 +553,17 @@ class HerdrTabStatusTest(unittest.TestCase):
         with self.server.lock:
             self.server.snapshot["agents"] = []
         self.success("once")
-        self.assertEqual(self.server.labels()[1], "review [— shell]")
+        self.assertEqual(self.server.labels()[1], "2 review [t2 — shell]")
         self.assertEqual(self.tokens()["tab_inventory"], "4 tabs · 5 panes · 0 agents")
 
     def test_manual_rename_is_preserved_when_refreshing_and_restoring(self):
         self.success("once")
         with self.server.lock:
             self.server.tab("w1:t2")["label"] = "security review"
-            self.server.tab("w1:t1")["label"] = "edited [▶ Codex <1m]"
+            self.server.tab("w1:t1")["label"] = "1 edited [t1 ▶ Codex <1m]"
         self.success("once")
-        self.assertEqual(self.server.labels()[0], "edited [▶ Codex <1m]")
-        self.assertEqual(self.server.labels()[1], "security review [! Claude <1m]")
+        self.assertEqual(self.server.labels()[0], "1 edited [t1 ▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[1], "2 security review [t2 ! Claude <1m]")
         self.success("stop")
         self.assertEqual(
             self.server.labels(), ["edited", "security review", "3", "logs"]
@@ -510,7 +581,7 @@ class HerdrTabStatusTest(unittest.TestCase):
         self.server.drop_next_rename_reply = True
         result = self.command("once")
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self.server.labels()[0], "1 [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "1 [t1 ▶ Codex <1m]")
         self.success("once")
         self.success("stop")
         self.assertEqual(self.server.labels(), ["1", "review", "3", "logs"])
@@ -527,12 +598,12 @@ class HerdrTabStatusTest(unittest.TestCase):
 
     def test_original_name_that_looks_like_a_marker_survives_a_failed_rename(self):
         with self.server.lock:
-            self.server.tab("w1:t1")["label"] = "manual [▶ Codex <1m]"
+            self.server.tab("w1:t1")["label"] = "manual [t1 ▶ Codex <1m]"
             self.server.reject_next_rename = True
         self.assertNotEqual(self.command("once").returncode, 0)
         self.success("once")
         self.success("stop")
-        self.assertEqual(self.server.labels()[0], "manual [▶ Codex <1m]")
+        self.assertEqual(self.server.labels()[0], "manual [t1 ▶ Codex <1m]")
 
     def test_closed_tabs_prune_the_journal_and_clear_unused_summary_rows(self):
         self.success("once")
@@ -549,16 +620,17 @@ class HerdrTabStatusTest(unittest.TestCase):
             ["w1:t1"],
         )
 
-    def test_sidebar_follows_positions_after_tab_reordering(self):
+    def test_sidebar_and_labels_follow_positions_after_tab_reordering(self):
         with self.server.lock:
-            self.server.tab("w1:t1")["number"] = 2
-            self.server.tab("w1:t2")["number"] = 1
+            tabs = self.server.snapshot["tabs"]
+            tabs[0], tabs[1] = tabs[1], tabs[0]
         self.success("once")
         self.assertTrue(
             self.tokens()["tab_states_1"].startswith("1 ! Claude <1m · 2 ▶ Codex <1m")
         )
         self.assertEqual(
-            self.server.labels()[:2], ["1 [▶ Codex <1m]", "review [! Claude <1m]"]
+            self.server.labels()[:2],
+            ["1 review [t2 ! Claude <1m]", "2 [t1 ▶ Codex <1m]"],
         )
 
     def test_many_tabs_use_compact_summary_and_keep_each_tab_status(self):
@@ -602,9 +674,9 @@ class HerdrTabStatusTest(unittest.TestCase):
             environment = {**self.environment, "HERDR_SOCKET_PATH": str(other.path)}
             result = self.command("once", environment=environment)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(other.labels()[0], "another session [▶ Codex <1m]")
+            self.assertEqual(other.labels()[0], "1 another session [t1 ▶ Codex <1m]")
             self.success("stop")
-            self.assertEqual(other.labels()[0], "another session [▶ Codex <1m]")
+            self.assertEqual(other.labels()[0], "1 another session [t1 ▶ Codex <1m]")
             result = self.command("stop", environment=environment)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(other.labels()[0], "another session")
@@ -612,7 +684,7 @@ class HerdrTabStatusTest(unittest.TestCase):
     def test_preview_is_read_only_and_creates_no_journal(self):
         result = self.success("preview")
         plan = json.loads(result.stdout)
-        self.assertEqual(plan["tabs"][1]["label"], "review [! Claude <1m]")
+        self.assertEqual(plan["tabs"][1]["label"], "2 review [t2 ! Claude <1m]")
         self.assertEqual(self.server.labels(), ["1", "review", "3", "logs"])
         self.assertEqual(
             [request["method"] for request in self.server.requests],
@@ -645,17 +717,39 @@ class HerdrTabStatusTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(self.server.requests, [])
 
-    def test_start_is_singleton_and_stop_restores_names_without_blocking_shell(self):
+    def test_start_is_event_driven_singleton_and_stop_wakes_immediately(self):
         started = time.monotonic()
-        self.success("start", "--interval", "0.05")
+        self.success("start", "--retry-delay", "0.05")
         self.assertLess(time.monotonic() - started, 2)
-        self.wait_for(lambda: self.server.labels()[3] == "logs [— shell]")
+        self.wait_for(lambda: self.server.labels()[3] == "4 logs [t4 — shell]")
+
+        # Idle session must not poll session.snapshot repeatedly.
+        with self.server.lock:
+            snapshots_before = sum(
+                r["method"] == "session.snapshot" for r in self.server.requests
+            )
+        time.sleep(0.25)
+        with self.server.lock:
+            snapshots_after = sum(
+                r["method"] == "session.snapshot" for r in self.server.requests
+            )
+        self.assertEqual(snapshots_before, snapshots_after)
+
+        # Emitting an agent status change triggers a fresh snapshot and rename.
+        with self.server.lock:
+            self.server.tab("w1:t1")["agent_status"] = "done"
+        self.server.emit("pane_agent_status_changed", {"pane_id": "w1:p1"})
+        self.wait_for(lambda: self.server.labels()[0] == "1 [t1 ✓ Codex <1m]")
+
         self.success("start", "--interval", "0.05")
         result = self.command("once")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("already running", result.stderr)
+
+        stop_started = time.monotonic()
         self.success("stop")
         self.wait_for(self.lock_available)
+        self.assertLess(time.monotonic() - stop_started, 2)
         self.assertEqual(self.server.labels(), ["1", "review", "3", "logs"])
         self.assertEqual(self.tokens(), {})
 
@@ -670,7 +764,7 @@ class HerdrTabStatusTest(unittest.TestCase):
         for process in processes:
             _stdout, stderr = process.communicate(timeout=10)
             self.assertEqual(process.returncode, 0, stderr.decode("utf-8"))
-        self.wait_for(lambda: self.server.labels()[3] == "logs [— shell]")
+        self.wait_for(lambda: self.server.labels()[3] == "4 logs [t4 — shell]")
         self.assertEqual((self.directory / "updater.log").read_bytes(), b"")
         self.success("stop")
         self.wait_for(self.lock_available)

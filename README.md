@@ -58,6 +58,7 @@ project task notes.
 | --- | --- |
 | `dot_codex/AGENTS.md` | `%USERPROFILE%\.codex\AGENTS.md` |
 | `dot_claude/CLAUDE.md.tmpl` (includes global guidance) | `%USERPROFILE%\.claude\CLAUDE.md` |
+| `dot_gemini/AGENTS.md.tmpl` (includes global guidance) | `%USERPROFILE%\.gemini\AGENTS.md` |
 | `AppData/Roaming/nushell/AGENTS.md` | `%APPDATA%\nushell\AGENTS.md` |
 | `AppData/Roaming/nushell/CLAUDE.md.tmpl` (includes Nushell guidance) | `%APPDATA%\nushell\CLAUDE.md` |
 
@@ -81,15 +82,29 @@ If a configured diff command or pager needs an unavailable executable (such as
 POSIX `cat`), use `chezmoi --source <absolute-checkout> --use-builtin-diff
 --no-pager diff -- <absolute-target>`.
 
+## Antigravity CLI (`agy`)
+
+Shared Antigravity CLI configuration is managed natively on Windows:
+
+| Source | Target | Purpose |
+| --- | --- | --- |
+| `dot_gemini/AGENTS.md.tmpl` | `%USERPROFILE%\.gemini\AGENTS.md` | Global agent guidance |
+| `dot_gemini/antigravity-cli/modify_private_settings.json` | `%USERPROFILE%\.gemini\antigravity-cli\settings.json` | Chezmoi `modify-template` that merges shared defaults (`altScreenMode`, `effort`, `model`, `statusLine`, `toolPermission`) while preserving machine-local keys (`trustedWorkspaces`, `gcp`, etc.) |
+| `dot_gemini/antigravity-cli/statusline.py`, `statusline.cmd` | `%USERPROFILE%\.gemini\antigravity-cli\statusline.*` | Native Python status line (model, cwd/branch/cached PR, context bar, quota countdown, active subagents/tasks) |
+| `dot_gemini/config/rules/pstack-models.md` | `%USERPROFILE%\.gemini\config\rules\pstack-models.md` | Antigravity hybrid pstack model rules |
+| `dot_gemini/config/skills.json.tmpl` | `%USERPROFILE%\.gemini\config\skills.json` | Shared `~/.agents/skills` entry |
+| `dot_local/bin/ay.py`, `ay.cmd` | `%USERPROFILE%\.local\bin\ay.*` | `agy --dangerously-skip-permissions` wrapper (`--help`, `--version`, `--`) |
+
 ## Herdr
 
-The Linux Herdr keybindings, Catppuccin theme, expanded sidebar, and tab agent
-indicators are ported to native Windows. New panes still use `nu.exe`; cursor
-selection uses Herdr's Windows `auto` policy. Nushell starts one hidden tab-status
-worker per session when Python is available. The helpers use Python's standard
-library and Windows named pipes, with no Bash, WSL, or extra Python packages.
+The Linux Herdr keybindings, Catppuccin theme, default sidebar (`sidebar_max_width = 48`),
+in-app toasts (`[ui.toast] delivery = "herdr"`), attention navigation, location copy popup,
+and event-driven tab agent indicators are ported to native Windows. New panes still use
+`nu.exe`; cursor selection uses Herdr's Windows `auto` policy. Nushell starts one hidden
+event-driven tab-status worker per session when Python is available. The helpers use Python's
+standard library and Windows named pipes, with no Bash, WSL, or extra Python packages.
 
-Python 3 must be available as `python` for tab indicators and workspace reordering.
+Python 3 must be available as `python` (or via `py`) for tab indicators and Herdr helpers.
 The Nushell startup integration skips the Windows App Installer alias when no
 actual Python is installed. Journals and logs live under
 `%LOCALAPPDATA%\herdr-tab-status\<socket-hash>` (or `XDG_CACHE_HOME` when set).
@@ -98,21 +113,25 @@ Common shortcuts:
 
 | Action | Shortcut |
 | --- | --- |
-| Workspace picker / new workspace | `Alt+w` / `Alt+c` |
+| Workspace picker / goto / new workspace | `Alt+w` / `Alt+g` (or `Ctrl+a g`) / `Alt+c` |
 | Previous / next workspace | `Alt+p` / `Alt+n`, or `Alt+Up` / `Alt+Down` |
+| Previous / next workspace needing attention | `Alt+u` / `Alt+o` |
 | Select workspace | `Alt+1..9` |
 | Move workspace up / down | `Alt+Shift+p` / `Alt+Shift+n`, or `Alt+Shift+Up` / `Alt+Shift+Down` |
-| New / close tab | `Alt+t` / `Alt+x` |
+| Close workspace / tab / pane | `Ctrl+a Shift+d` / `Ctrl+a Shift+x` / `Ctrl+a x` |
+| New tab / rename tab | `Alt+t` / `Alt+Shift+t` |
 | Previous / next tab | `Alt+h` / `Alt+i`, or `Alt+Left` / `Alt+Right` |
 | Select tab | `Alt+Shift+1..9` |
 | Move tab left / right | `Alt+Shift+h` / `Alt+Shift+i` |
+| Copy current location popup | `Ctrl+a y` |
 | Split / zoom | `Alt+v` / `Alt+f` |
 | Reload client config | `Ctrl+a`, then `Shift+r` |
 
-Tab labels retain their original names and gain agent state and observed elapsed
-time, such as `review [! Claude 3m]`. The sidebar shows tab/pane/agent counts and
-up to 13 rows of tab summaries. `stop` restores names still owned by the reporter
-and clears only its own sidebar metadata.
+Tab labels retain their original names and show current position, short tab ID,
+agent state, and observed elapsed time, such as `2 review [t2 ! Claude 3m]`.
+The worker subscribes to `events.subscribe` (no idle polling), publishes `$pane_id`
+and workspace summary metadata, and `stop` wakes immediately to restore owned names
+and clear only its own metadata.
 
 Inside an existing Herdr Nushell pane:
 
@@ -120,20 +139,24 @@ Inside an existing Herdr Nushell pane:
 herdr-tab-status preview
 herdr-tab-status start
 herdr-tab-status stop
+herdr-attention list
+herdr-location
+herdr-label-agents
 ```
 
 New panes start the reporter automatically. Reload the client config with the
-shortcut above to pick up the sidebar and bindings without restarting the server.
+shortcut above to pick up the updated config without restarting the server.
 When replacing a running reporter, stop it and wait for original names before
 applying the changed helpers, then start it again.
 
 Apply each helper separately, then `herdr.nu`, `config.nu`, and Herdr's
 `config.toml`, using the exact deployed file targets. The helper sources are
 `dot_local/bin/herdr_api.py`, `herdr_move_workspace.py`, `herdr_tab_status.py`,
-`herdr-move-workspace.cmd`, and `herdr-tab-status.cmd`. Tests stay in the repository:
+`herdr_attention.py`, `herdr_location.py`, `herdr_label_agents.py`, and their
+`.cmd` wrappers. Tests stay in the repository:
 
 ```powershell
-python -X utf8 -m unittest tests.test_herdr_tab_status tests.test_herdr_move_workspace -q
+python -X utf8 -m unittest tests.test_herdr_tab_status tests.test_herdr_move_workspace tests.test_herdr_helpers tests.test_agy_settings -q
 $env:HERDR_CONFIG_PATH = "$PWD\AppData\Roaming\herdr\config.toml"
 herdr config check
 ```

@@ -43,8 +43,9 @@ If the configured diff command or pager is unavailable, use
 
 - Keep root `CLAUDE.md` identical to this file; both are repository-only guidance.
 - Global guidance lives in `dot_codex/AGENTS.md`. Its targets are
-  `%USERPROFILE%\.codex\AGENTS.md` and `%USERPROFILE%\.claude\CLAUDE.md`;
-  validate and apply both separately. `dot_claude/CLAUDE.md.tmpl` includes that
+  `%USERPROFILE%\.codex\AGENTS.md`, `%USERPROFILE%\.claude\CLAUDE.md`, and
+  `%USERPROFILE%\.gemini\AGENTS.md`; validate and apply each separately.
+  `dot_claude/CLAUDE.md.tmpl` and `dot_gemini/AGENTS.md.tmpl` include that
   source, so edit only `dot_codex/AGENTS.md` for global guidance.
 - Nushell guidance lives in `AppData/Roaming/nushell/AGENTS.md` and deploys to
   `%APPDATA%\nushell\AGENTS.md`. Its sibling `CLAUDE.md.tmpl` includes it;
